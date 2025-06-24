@@ -1,0 +1,9 @@
+# This file ensures the assets directory is tracked by git
+# Place your add-in icons and images in this directory
+
+# Required icon files for the add-in:
+# - icon-16.png (16x16 pixels)
+# - icon-32.png (32x32 pixels) 
+# - icon-64.png (64x64 pixels)
+# - icon-80.png (80x80 pixels)
+# - logo-filled.png (90x90 pixels for the header) 

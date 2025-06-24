@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Model Review Tool</title>
+    
+    <!-- Office.js -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    
+    <!-- Fabric UI CSS -->
+    <link rel="stylesheet" href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-js/1.4.0/css/fabric.min.css">
+    <link rel="stylesheet" href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-js/1.4.0/css/fabric.components.min.css">
+</head>
+
+<body class="ms-Fabric">
+    <div class="ms-welcome">
+        <header class="ms-welcome__header ms-bgColor-neutralLighter">
+            <img width="90" height="90" src="../../assets/logo-filled.png" alt="MRT" title="Model Review Tool" />
+            <h1 class="ms-fontSize-su ms-fontWeight-light ms-fontColor-neutralPrimary">Model Review Tool</h1>
+            <h2 class="ms-fontSize-l ms-fontWeight-semilight ms-fontColor-neutralSecondary">Formula Analysis & Review</h2>
+        </header>
+        
+        <main class="ms-welcome__main">
+            <!-- Analysis Controls -->
+            <section class="ms-welcome__features">
+                <div class="ms-Grid">
+                    <div class="ms-Grid-row">
+                        <div class="ms-Grid-col ms-sm12">
+                            <div class="ms-TextField">
+                                <label class="ms-Label">Analysis Options</label>
+                                <div class="analysis-options">
+                                    <div class="ms-CheckBox">
+                                        <input tabindex="-1" type="checkbox" class="ms-CheckBox-input" id="includeEmptyCells" checked>
+                                        <label role="checkbox" class="ms-CheckBox-field" tabindex="0" aria-checked="true" name="checkboxa">
+                                            <span class="ms-Label">Include empty cells in analysis</span>
+                                        </label>
+                                    </div>
+                                    <div class="ms-CheckBox">
+                                        <input tabindex="-1" type="checkbox" class="ms-CheckBox-input" id="groupSimilarFormulas" checked>
+                                        <label role="checkbox" class="ms-CheckBox-field" tabindex="0" aria-checked="true" name="checkboxb">
+                                            <span class="ms-Label">Group similar formulas</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ms-Grid">
+                    <div class="ms-Grid-row">
+                        <div class="ms-Grid-col ms-sm12">
+                            <button id="analyzeFormulas" class="ms-Button ms-Button--primary">
+                                <span class="ms-Button-label">Analyze Workbook Formulas</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="results-section" style="display: none;">
+                <h3 class="ms-fontSize-l ms-fontWeight-semibold">Analysis Results</h3>
+                
+                <!-- Summary Card -->
+                <div id="summaryCard" class="summary-card ms-bgColor-neutralLighter">
+                    <div class="ms-Grid">
+                        <div class="ms-Grid-row">
+                            <div class="ms-Grid-col ms-sm4">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="totalWorksheets">0</span>
+                                    <span class="stat-label">Worksheets</span>
+                                </div>
+                            </div>
+                            <div class="ms-Grid-col ms-sm4">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="totalFormulas">0</span>
+                                    <span class="stat-label">Total Formulas</span>
+                                </div>
+                            </div>
+                            <div class="ms-Grid-col ms-sm4">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="uniqueFormulas">0</span>
+                                    <span class="stat-label">Unique Formulas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Worksheet Details -->
+                <div id="worksheetDetails" class="worksheet-details">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+
+                <!-- Export Options -->
+                <div class="export-options">
+                    <button id="exportResults" class="ms-Button">
+                        <span class="ms-Button-label">Export Analysis Report</span>
+                    </button>
+                    <button id="generateAuditTrail" class="ms-Button">
+                        <span class="ms-Button-label">Generate Audit Trail</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+                <div class="ms-Spinner ms-Spinner--large">
+                    <div class="ms-Spinner-circle"></div>
+                    <div class="ms-Spinner-label">Analyzing formulas...</div>
+                </div>
+            </div>
+
+            <!-- Status Messages -->
+            <div id="statusMessages" class="status-messages"></div>
+        </main>
+    </div>
+</body>
+</html> 

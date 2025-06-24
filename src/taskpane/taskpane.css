@@ -1,0 +1,245 @@
+/* Main container styles */
+.ms-welcome {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.ms-welcome__header {
+    width: 100%;
+    min-height: 130px;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #edebe9;
+}
+
+.ms-welcome__main {
+    flex-grow: 1;
+    padding: 20px;
+}
+
+/* Analysis options styling */
+.analysis-options {
+    margin: 15px 0;
+}
+
+.analysis-options .ms-CheckBox {
+    margin: 10px 0;
+}
+
+/* Button styling */
+#analyzeFormulas {
+    width: 100%;
+    margin: 20px 0;
+    padding: 12px;
+}
+
+/* Results section */
+.results-section {
+    margin-top: 30px;
+    border-top: 1px solid #edebe9;
+    padding-top: 20px;
+}
+
+/* Summary card */
+.summary-card {
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 4px;
+    border: 1px solid #d2d0ce;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 10px;
+}
+
+.stat-number {
+    display: block;
+    font-size: 28px;
+    font-weight: 600;
+    color: #0078d4;
+    line-height: 1.2;
+}
+
+.stat-label {
+    display: block;
+    font-size: 12px;
+    color: #605e5c;
+    margin-top: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Worksheet details */
+.worksheet-details {
+    margin: 20px 0;
+}
+
+.worksheet-card {
+    background: #faf9f8;
+    border: 1px solid #e1dfdd;
+    border-radius: 4px;
+    margin: 10px 0;
+    padding: 15px;
+}
+
+.worksheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.worksheet-name {
+    font-weight: 600;
+    color: #323130;
+    font-size: 16px;
+}
+
+.worksheet-stats {
+    display: flex;
+    gap: 20px;
+    margin: 10px 0;
+}
+
+.worksheet-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.worksheet-stat-number {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0078d4;
+}
+
+.worksheet-stat-label {
+    font-size: 11px;
+    color: #605e5c;
+    text-transform: uppercase;
+}
+
+/* Formula list */
+.formula-list {
+    margin-top: 15px;
+}
+
+.formula-item {
+    background: white;
+    border: 1px solid #e1dfdd;
+    border-radius: 2px;
+    padding: 10px;
+    margin: 5px 0;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+}
+
+.formula-text {
+    color: #0078d4;
+    word-break: break-all;
+}
+
+.formula-count {
+    color: #605e5c;
+    font-size: 11px;
+    margin-top: 5px;
+}
+
+/* Export options */
+.export-options {
+    margin: 30px 0;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.export-options button {
+    flex: 1;
+    min-width: 150px;
+}
+
+/* Loading indicator */
+.loading-indicator {
+    text-align: center;
+    padding: 40px;
+}
+
+/* Status messages */
+.status-messages {
+    margin: 20px 0;
+}
+
+.status-message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.status-success {
+    background-color: #dff6dd;
+    border-color: #107c10;
+    color: #107c10;
+}
+
+.status-error {
+    background-color: #fde7e9;
+    border-color: #d13438;
+    color: #d13438;
+}
+
+.status-warning {
+    background-color: #fff4ce;
+    border-color: #ff8c00;
+    color: #ff8c00;
+}
+
+.status-info {
+    background-color: #deecf9;
+    border-color: #0078d4;
+    color: #0078d4;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+    .ms-welcome__header {
+        padding: 15px;
+    }
+    
+    .ms-welcome__main {
+        padding: 15px;
+    }
+    
+    .worksheet-stats {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .export-options {
+        flex-direction: column;
+    }
+    
+    .export-options button {
+        width: 100%;
+    }
+}
+
+/* Accessibility improvements */
+.ms-Button:focus,
+.ms-CheckBox-field:focus {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
+}
+
+/* Animation for loading */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.results-section {
+    animation: fadeIn 0.3s ease-in-out;
+} 
