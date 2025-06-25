@@ -8,31 +8,13 @@ Office.onReady((info) => {
         document.getElementById('exportResults')?.addEventListener('click', exportResults);
         document.getElementById('generateAuditTrail')?.addEventListener('click', generateAuditTrail);
         
-        // Initialize Fabric UI components
-        initializeFabricComponents();
+        // Components are now initialized
     }
 });
 
 let analysisResults: any = null;
 
-/**
- * Initialize Fabric UI components
- */
-function initializeFabricComponents(): void {
-    // Initialize checkboxes
-    const checkboxes = document.querySelectorAll('.ms-CheckBox');
-    checkboxes.forEach(checkbox => {
-        const input = checkbox.querySelector('input') as HTMLInputElement;
-        const label = checkbox.querySelector('.ms-CheckBox-field') as HTMLElement;
-        
-        if (input && label) {
-            label.addEventListener('click', () => {
-                input.checked = !input.checked;
-                label.setAttribute('aria-checked', input.checked.toString());
-            });
-        }
-    });
-}
+// Fabric UI components are no longer needed - using standard HTML checkboxes
 
 /**
  * Main function to analyze formulas in the workbook

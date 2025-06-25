@@ -1,7 +1,7 @@
 {
-  "name": "mrt-excel-addin",
+  "name": "mert-excel-addin",
   "version": "1.0.0",
-  "description": "Model Review Tool - Excel Add-in for formula analysis and model review",
+  "description": "Model Excel Review Tool - Excel Add-in for formula analysis and model review",
   "main": "src/taskpane/taskpane.html",
   "scripts": {
     "build": "webpack --mode production",

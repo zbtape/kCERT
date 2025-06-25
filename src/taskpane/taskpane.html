@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Model Review Tool</title>
+    <title>Model Excel Review Tool</title>
     
     <!-- Office.js -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
@@ -17,8 +17,8 @@
 <body class="ms-Fabric">
     <div class="ms-welcome">
         <header class="ms-welcome__header ms-bgColor-neutralLighter">
-            <img width="90" height="90" src="../../assets/logo-filled.png" alt="MRT" title="Model Review Tool" />
-            <h1 class="ms-fontSize-su ms-fontWeight-light ms-fontColor-neutralPrimary">Model Review Tool</h1>
+            <img width="90" height="90" src="../../assets/logo-filled.png" alt="MERT" title="Model Excel Review Tool" />
+            <h1 class="ms-fontSize-su ms-fontWeight-light ms-fontColor-neutralPrimary">Model Excel Review Tool</h1>
             <h2 class="ms-fontSize-l ms-fontWeight-semilight ms-fontColor-neutralSecondary">Formula Analysis & Review</h2>
         </header>
         
@@ -31,17 +31,13 @@
                             <div class="ms-TextField">
                                 <label class="ms-Label">Analysis Options</label>
                                 <div class="analysis-options">
-                                    <div class="ms-CheckBox">
-                                        <input tabindex="-1" type="checkbox" class="ms-CheckBox-input" id="includeEmptyCells" checked>
-                                        <label role="checkbox" class="ms-CheckBox-field" tabindex="0" aria-checked="true" name="checkboxa">
-                                            <span class="ms-Label">Include empty cells in analysis</span>
-                                        </label>
+                                    <div class="checkbox-container">
+                                        <input type="checkbox" id="includeEmptyCells" checked>
+                                        <label for="includeEmptyCells">Include empty cells in analysis</label>
                                     </div>
-                                    <div class="ms-CheckBox">
-                                        <input tabindex="-1" type="checkbox" class="ms-CheckBox-input" id="groupSimilarFormulas" checked>
-                                        <label role="checkbox" class="ms-CheckBox-field" tabindex="0" aria-checked="true" name="checkboxb">
-                                            <span class="ms-Label">Group similar formulas</span>
-                                        </label>
+                                    <div class="checkbox-container">
+                                        <input type="checkbox" id="groupSimilarFormulas" checked>
+                                        <label for="groupSimilarFormulas">Group similar formulas</label>
                                     </div>
                                 </div>
                             </div>

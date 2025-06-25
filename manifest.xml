@@ -9,7 +9,7 @@
   <ProviderName>Your Company</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   
-  <DisplayName DefaultValue="Model Review Tool (MRT)"/>
+  <DisplayName DefaultValue="Model Excel Review Tool (MERT)"/>
   <Description DefaultValue="Professional Excel add-in for formula analysis and model review with audit trail capabilities"/>
   <IconUrl DefaultValue="http://localhost:8080/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="http://localhost:8080/assets/icon-64.png"/>
@@ -86,8 +86,8 @@
         <bt:Url id="Taskpane.Url" DefaultValue="http://localhost:8080/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="Model Review Tool"/>
-        <bt:String id="CommandsGroup.Label" DefaultValue="MRT"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Model Excel Review Tool"/>
+        <bt:String id="CommandsGroup.Label" DefaultValue="MERT"/>
         <bt:String id="TaskpaneButton.Label" DefaultValue="Formula Analysis"/>
       </bt:ShortStrings>
       <bt:LongStrings>

@@ -24,8 +24,24 @@
     margin: 15px 0;
 }
 
-.analysis-options .ms-CheckBox {
-    margin: 10px 0;
+.checkbox-container {
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.checkbox-container input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.checkbox-container label {
+    cursor: pointer;
+    font-size: 14px;
+    color: #323130;
+    user-select: none;
 }
 
 /* Button styling */
