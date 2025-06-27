@@ -1,7 +1,7 @@
-{
-  "name": "mert-excel-addin",
+﻿{
+  "name": "cert-excel-addin",
   "version": "1.0.0",
-  "description": "Model Excel Review Tool - Excel Add-in for formula analysis and model review",
+  "description": "Comprehensive Excel Review Tool - Excel Add-in for formula analysis and model review",
   "main": "src/taskpane/taskpane.html",
   "scripts": {
     "build": "webpack --mode production",

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
@@ -9,7 +9,7 @@
   <ProviderName>Your Company</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   
-  <DisplayName DefaultValue="Comprehensive Excel Review Tool (CERT)"/>
+  <DisplayName DefaultValue="Model Excel Review Tool (MERT)"/>
   <Description DefaultValue="Professional Excel add-in for formula analysis and model review with audit trail capabilities"/>
   <IconUrl DefaultValue="http://localhost:8080/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="http://localhost:8080/assets/icon-64.png"/>
@@ -81,13 +81,13 @@
         <bt:Image id="Icon.80x80" DefaultValue="http://localhost:8080/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://yourcompany.com/cert"/>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://yourcompany.com/mrt"/>
         <bt:Url id="Commands.Url" DefaultValue="http://localhost:8080/commands.html"/>
         <bt:Url id="Taskpane.Url" DefaultValue="http://localhost:8080/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="Comprehensive Excel Review Tool"/>
-        <bt:String id="CommandsGroup.Label" DefaultValue="CERT"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Model Excel Review Tool"/>
+        <bt:String id="CommandsGroup.Label" DefaultValue="MERT"/>
         <bt:String id="TaskpaneButton.Label" DefaultValue="Formula Analysis"/>
       </bt:ShortStrings>
       <bt:LongStrings>
