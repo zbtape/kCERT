@@ -38,9 +38,9 @@ async function analyzeFormulas(): Promise<void> {
             showStatusMessage('Formula analysis completed successfully!', 'success');
         });
         
-    } catch (error) {
-        console.error('Error analyzing formulas:', error);
-        showStatusMessage(`Error during analysis: ${error.message}`, 'error');
+    } catch (err) {
+        console.error('Error analyzing formulas:', err);
+        showStatusMessage(`Error during analysis: ${getErrorMessage(err)}`, 'error');
     } finally {
         showLoadingIndicator(false);
     }
@@ -92,6 +92,10 @@ function createWorksheetCard(worksheet: any): HTMLElement {
                 <span class="worksheet-stat-number">${worksheet.totalCells}</span>
                 <span class="worksheet-stat-label">Total Cells</span>
             </div>
+            <div class="worksheet-stat">
+                <span class="worksheet-stat-number">${worksheet.formulaComplexity}</span>
+                <span class="worksheet-stat-label">Complexity</span>
+            </div>
         </div>
         <div class="formula-list" id="formulaList_${worksheet.name.replace(/\s+/g, '_')}">
             <h4>Unique Formulas:</h4>
@@ -120,76 +124,95 @@ async function exportResults(): Promise<void> {
         showStatusMessage('Exporting analysis results...', 'info');
         
         await Excel.run(async (context) => {
+            // Remove existing report sheet if present to avoid double-counting
+            const existing = context.workbook.worksheets.getItemOrNullObject('CERT_Analysis_Report');
+            existing.load('name');
+            await context.sync();
+            if (!existing.isNullObject) {
+                existing.delete();
+                await context.sync();
+            }
+
             // Create a new worksheet for the report
-            const reportSheet = context.workbook.worksheets.add('MRT_Analysis_Report');
-            
+            const reportSheet = context.workbook.worksheets.add('CERT_Analysis_Report');
+
+            // Helper to set a single cell value using A1 address
+            const setCellValue = (address: string, value: any) => {
+                const range = reportSheet.getRange(address);
+                range.values = [[value]];
+                return range;
+            };
+
             // Add headers and data
             let row = 1;
-            
+
             // Title and timestamp
-            reportSheet.getCell(row, 1).value = 'Model Review Tool - Formula Analysis Report';
-            reportSheet.getCell(row, 1).format.font.bold = true;
-            reportSheet.getCell(row, 1).format.font.size = 16;
+            setCellValue(`A${row}`, 'Model Review Tool - Formula Analysis Report');
+            reportSheet.getRange(`A${row}`).format.font.bold = true;
+            reportSheet.getRange(`A${row}`).format.font.size = 16;
             row += 2;
-            
-            reportSheet.getCell(row, 1).value = `Generated: ${new Date().toLocaleString()}`;
+
+            setCellValue(`A${row}`, `Generated: ${new Date().toLocaleString()}`);
             row += 2;
-            
+
             // Summary statistics
-            reportSheet.getCell(row, 1).value = 'Summary Statistics';
-            reportSheet.getCell(row, 1).format.font.bold = true;
+            setCellValue(`A${row}`, 'Summary Statistics');
+            reportSheet.getRange(`A${row}`).format.font.bold = true;
             row++;
-            
-            reportSheet.getCell(row, 1).value = 'Total Worksheets:';
-            reportSheet.getCell(row, 2).value = analysisResults.totalWorksheets;
+
+            setCellValue(`A${row}`, 'Total Worksheets:');
+            setCellValue(`B${row}`, analysisResults.totalWorksheets);
             row++;
-            
-            reportSheet.getCell(row, 1).value = 'Total Formulas:';
-            reportSheet.getCell(row, 2).value = analysisResults.totalFormulas;
+
+            setCellValue(`A${row}`, 'Total Formulas:');
+            setCellValue(`B${row}`, analysisResults.totalFormulas);
             row++;
-            
-            reportSheet.getCell(row, 1).value = 'Unique Formulas:';
-            reportSheet.getCell(row, 2).value = analysisResults.uniqueFormulas;
+
+            setCellValue(`A${row}`, 'Unique Formulas:');
+            setCellValue(`B${row}`, analysisResults.uniqueFormulas);
             row += 2;
-            
+
             // Worksheet details
-            reportSheet.getCell(row, 1).value = 'Worksheet Details';
-            reportSheet.getCell(row, 1).format.font.bold = true;
+            setCellValue(`A${row}`, 'Worksheet Details');
+            reportSheet.getRange(`A${row}`).format.font.bold = true;
             row++;
-            
+
             // Headers
-            reportSheet.getCell(row, 1).value = 'Worksheet Name';
-            reportSheet.getCell(row, 2).value = 'Total Formulas';
-            reportSheet.getCell(row, 3).value = 'Unique Formulas';
-            reportSheet.getCell(row, 4).value = 'Total Cells';
-            
+            setCellValue(`A${row}`, 'Worksheet Name');
+            setCellValue(`B${row}`, 'Total Formulas');
+            setCellValue(`C${row}`, 'Unique Formulas');
+            setCellValue(`D${row}`, 'Total Cells');
+            setCellValue(`E${row}`, 'Complexity');
+
             // Make headers bold
-            reportSheet.getRange(`A${row}:D${row}`).format.font.bold = true;
+            reportSheet.getRange(`A${row}:E${row}`).format.font.bold = true;
             row++;
-            
+
             // Add worksheet data
             analysisResults.worksheets.forEach((worksheet: any) => {
-                reportSheet.getCell(row, 1).value = worksheet.name;
-                reportSheet.getCell(row, 2).value = worksheet.totalFormulas;
-                reportSheet.getCell(row, 3).value = worksheet.uniqueFormulas;
-                reportSheet.getCell(row, 4).value = worksheet.totalCells;
+                setCellValue(`A${row}`, worksheet.name);
+                setCellValue(`B${row}`, worksheet.totalFormulas);
+                setCellValue(`C${row}`, worksheet.uniqueFormulas);
+                setCellValue(`D${row}`, worksheet.totalCells);
+                setCellValue(`E${row}`, worksheet.formulaComplexity);
                 row++;
             });
-            
+
             // Auto-fit columns
-            reportSheet.getUsedRange().format.autofitColumns();
-            
+            const used = reportSheet.getUsedRange(true);
+            used.format.autofitColumns();
+
             await context.sync();
-            
+
             // Activate the report sheet
             reportSheet.activate();
         });
         
         showStatusMessage('Analysis report exported successfully!', 'success');
         
-    } catch (error) {
-        console.error('Error exporting results:', error);
-        showStatusMessage(`Error exporting results: ${error.message}`, 'error');
+    } catch (err) {
+        console.error('Error exporting results:', err);
+        showStatusMessage(`Error exporting results: ${getErrorMessage(err)}`, 'error');
     }
 }
 
@@ -229,9 +252,9 @@ async function generateAuditTrail(): Promise<void> {
         
         showStatusMessage('Audit trail generated and downloaded successfully!', 'success');
         
-    } catch (error) {
-        console.error('Error generating audit trail:', error);
-        showStatusMessage(`Error generating audit trail: ${error.message}`, 'error');
+    } catch (err) {
+        console.error('Error generating audit trail:', err);
+        showStatusMessage(`Error generating audit trail: ${getErrorMessage(err)}`, 'error');
     }
 }
 
@@ -271,3 +294,17 @@ function escapeHtml(text: string): string {
     div.textContent = text;
     return div.innerHTML;
 } 
+
+/**
+ * Safely extract a message from an unknown error
+ */
+function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) {
+        return err.message;
+    }
+    try {
+        return JSON.stringify(err);
+    } catch {
+        return String(err);
+    }
+}

@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "cert-excel-addin",
   "version": "1.0.0",
   "description": "Comprehensive Excel Review Tool - Excel Add-in for formula analysis and model review",
@@ -44,4 +44,4 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
   }
-} 
+}

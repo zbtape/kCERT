@@ -57,8 +57,12 @@ export class FormulaAnalyzer {
         let totalFormulas = 0;
         const allUniqueFormulas = new Set<string>();
         
+        // Filter out add-in generated report sheets
+        const reportSheetNames = new Set(["CERT_Analysis_Report", "MRT_Analysis_Report"]);
+        const worksheetsToAnalyze = worksheets.items.filter(ws => !reportSheetNames.has(ws.name));
+
         // Analyze each worksheet
-        for (const worksheet of worksheets.items) {
+        for (const worksheet of worksheetsToAnalyze) {
             const worksheetResult = await this.analyzeWorksheet(context, worksheet, options);
             worksheetResults.push(worksheetResult);
             totalFormulas += worksheetResult.totalFormulas;
@@ -70,7 +74,7 @@ export class FormulaAnalyzer {
         }
         
         return {
-            totalWorksheets: worksheets.items.length,
+            totalWorksheets: worksheetsToAnalyze.length,
             totalFormulas,
             uniqueFormulas: allUniqueFormulas.size,
             worksheets: worksheetResults,
