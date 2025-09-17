@@ -66,6 +66,22 @@
     border: 1px solid #d2d0ce;
 }
 
+/* Analysis sections */
+.analysis-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: #faf9f8;
+    border: 1px solid #e1dfdd;
+    border-radius: 4px;
+}
+
+.analysis-section h4 {
+    margin: 0 0 15px 0;
+    color: #323130;
+    border-bottom: 1px solid #e1dfdd;
+    padding-bottom: 8px;
+}
+
 .stat-item {
     text-align: center;
     padding: 10px;
@@ -136,6 +152,147 @@
     font-size: 11px;
     color: #605e5c;
     text-transform: uppercase;
+}
+
+/* Hard-coded values confidence styling */
+.high-confidence .stat-number {
+    color: #d13438;
+}
+
+.medium-confidence .stat-number {
+    color: #ff8c00;
+}
+
+.low-confidence .stat-number {
+    color: #605e5c;
+}
+
+/* Hard-coded values list */
+.hard-coded-values-list {
+    margin-top: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.hard-coded-value-item {
+    background: white;
+    border: 1px solid #e1dfdd;
+    border-radius: 2px;
+    padding: 10px;
+    margin: 5px 0;
+    font-size: 12px;
+}
+
+.hard-coded-value-item.high-confidence {
+    border-left: 4px solid #d13438;
+}
+
+.hard-coded-value-item.medium-confidence {
+    border-left: 4px solid #ff8c00;
+}
+
+.hard-coded-value-item.low-confidence {
+    border-left: 4px solid #605e5c;
+}
+
+.hard-coded-value-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.hard-coded-value-address {
+    font-weight: 600;
+    color: #0078d4;
+}
+
+.hard-coded-value-confidence {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.hard-coded-value-confidence.high {
+    background-color: #fde7e9;
+    color: #d13438;
+}
+
+.hard-coded-value-confidence.medium {
+    background-color: #fff4ce;
+    color: #ff8c00;
+}
+
+.hard-coded-value-confidence.low {
+    background-color: #f3f2f1;
+    color: #605e5c;
+}
+
+.hard-coded-value-content {
+    font-family: 'Consolas', 'Monaco', monospace;
+    color: #323130;
+    word-break: break-all;
+    margin: 5px 0;
+}
+
+.hard-coded-value-reason {
+    color: #605e5c;
+    font-size: 11px;
+    font-style: italic;
+}
+
+/* Inconsistency badge styling */
+.inconsistency-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-left: 8px;
+}
+
+.inconsistency-badge.value_mismatch {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+.inconsistency-badge.range_endpoint {
+    background-color: #ff9f43;
+    color: white;
+}
+
+.inconsistency-badge.pattern_deviation {
+    background-color: #4ecdc4;
+    color: white;
+}
+
+.inconsistency-badge.isolated_hardcode {
+    background-color: #95a5a6;
+    color: white;
+}
+
+/* Nearby patterns styling */
+.nearby-patterns {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.nearby-patterns ul {
+    margin: 4px 0 0 0;
+    padding-left: 20px;
+}
+
+.nearby-patterns li {
+    margin: 2px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: #495057;
 }
 
 /* Formula list */

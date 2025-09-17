@@ -64,25 +64,94 @@
                 <div id="summaryCard" class="summary-card ms-bgColor-neutralLighter">
                     <div class="ms-Grid">
                         <div class="ms-Grid-row">
-                            <div class="ms-Grid-col ms-sm4">
+                            <div class="ms-Grid-col ms-sm3">
                                 <div class="stat-item">
                                     <span class="stat-number" id="totalWorksheets">0</span>
                                     <span class="stat-label">Worksheets</span>
                                 </div>
                             </div>
-                            <div class="ms-Grid-col ms-sm4">
+                            <div class="ms-Grid-col ms-sm3">
                                 <div class="stat-item">
                                     <span class="stat-number" id="totalFormulas">0</span>
                                     <span class="stat-label">Total Formulas</span>
                                 </div>
                             </div>
-                            <div class="ms-Grid-col ms-sm4">
+                            <div class="ms-Grid-col ms-sm3">
                                 <div class="stat-item">
                                     <span class="stat-number" id="uniqueFormulas">0</span>
                                     <span class="stat-label">Unique Formulas</span>
                                 </div>
                             </div>
+                            <div class="ms-Grid-col ms-sm3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="totalHardCodedValues">0</span>
+                                    <span class="stat-label">Hard-coded Values</span>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Cell Count Analysis -->
+                <div id="cellCountAnalysis" class="analysis-section">
+                    <h4 class="ms-fontSize-m ms-fontWeight-semibold">Cell Count Analysis</h4>
+                    <div class="ms-Grid">
+                        <div class="ms-Grid-row">
+                            <div class="ms-Grid-col ms-sm3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="totalCells">0</span>
+                                    <span class="stat-label">Total Cells</span>
+                                </div>
+                            </div>
+                            <div class="ms-Grid-col ms-sm3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="cellsWithFormulas">0</span>
+                                    <span class="stat-label">Cells with Formulas</span>
+                                </div>
+                            </div>
+                            <div class="ms-Grid-col ms-sm3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="cellsWithValues">0</span>
+                                    <span class="stat-label">Cells with Values</span>
+                                </div>
+                            </div>
+                            <div class="ms-Grid-col ms-sm3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="emptyCells">0</span>
+                                    <span class="stat-label">Empty Cells</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hard-coded Values Analysis -->
+                <div id="hardCodedValuesAnalysis" class="analysis-section">
+                    <h4 class="ms-fontSize-m ms-fontWeight-semibold">Hard-coded Values Analysis</h4>
+                    <div class="ms-Grid">
+                        <div class="ms-Grid-row">
+                            <div class="ms-Grid-col ms-sm4">
+                                <div class="stat-item high-confidence">
+                                    <span class="stat-number" id="highConfidenceValues">0</span>
+                                    <span class="stat-label">High Confidence</span>
+                                </div>
+                            </div>
+                            <div class="ms-Grid-col ms-sm4">
+                                <div class="stat-item medium-confidence">
+                                    <span class="stat-number" id="mediumConfidenceValues">0</span>
+                                    <span class="stat-label">Medium Confidence</span>
+                                </div>
+                            </div>
+                            <div class="ms-Grid-col ms-sm4">
+                                <div class="stat-item low-confidence">
+                                    <span class="stat-number" id="lowConfidenceValues">0</span>
+                                    <span class="stat-label">Low Confidence</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="hardCodedValuesList" class="hard-coded-values-list">
+                        <!-- Dynamic content will be inserted here -->
                     </div>
                 </div>
 

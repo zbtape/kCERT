@@ -31,16 +31,35 @@ async function analyzeFormulas(): Promise<void> {
         
         await Excel.run(async (context) => {
             const analyzer = new FormulaAnalyzer();
+            
+            // Show progress for large models
+            showStatusMessage('Analyzing workbook structure...', 'info');
             const results = await analyzer.analyzeWorkbook(context, options);
+            
+            // Show specific message for massive models
+            if (results.totalCells > 50000) {
+                showStatusMessage('MASSIVE MODEL detected - using minimal analysis mode for performance', 'info');
+            }
             
             analysisResults = results;
             displayResults(results);
-            showStatusMessage('Formula analysis completed successfully!', 'success');
+            
+            const totalCells = results.totalCells;
+            if (totalCells > 100000) {
+                showStatusMessage(`Analysis completed! Processed ${totalCells.toLocaleString()} cells across ${results.totalWorksheets} worksheets.`, 'success');
+            } else {
+                showStatusMessage('Formula analysis completed successfully!', 'success');
+            }
         });
         
     } catch (err) {
         console.error('Error analyzing formulas:', err);
-        showStatusMessage(`Error during analysis: ${getErrorMessage(err)}`, 'error');
+        const errorMsg = getErrorMessage(err);
+        if (errorMsg.includes('Maximum call stack size exceeded')) {
+            showStatusMessage(`STACK OVERFLOW ERROR - Using optimized version v6.0 with NULL-SAFE HARD-CODED DETECTION. Please check if you're using the latest build. Error: ${errorMsg}`, 'error');
+        } else {
+            showStatusMessage(`Error during analysis: ${errorMsg}`, 'error');
+        }
     } finally {
         showLoadingIndicator(false);
     }
@@ -54,6 +73,38 @@ function displayResults(results: any): void {
     document.getElementById('totalWorksheets')!.textContent = results.totalWorksheets.toString();
     document.getElementById('totalFormulas')!.textContent = results.totalFormulas.toString();
     document.getElementById('uniqueFormulas')!.textContent = results.uniqueFormulas.toString();
+    document.getElementById('totalHardCodedValues')!.textContent = results.totalHardCodedValues.toString();
+    
+    // Update cell count analysis
+    document.getElementById('totalCells')!.textContent = results.totalCells.toString();
+    document.getElementById('cellsWithFormulas')!.textContent = results.totalCellsWithFormulas.toString();
+    document.getElementById('cellsWithValues')!.textContent = results.totalCellsWithValues.toString();
+    document.getElementById('emptyCells')!.textContent = (results.totalCells - results.totalCellsWithFormulas - results.totalCellsWithValues).toString();
+    
+    // Update hard-coded values analysis with null checks
+    const highSeverity = results.worksheets.reduce((sum: number, ws: any) => {
+        const analysis = ws.hardCodedValueAnalysis;
+        return sum + (analysis?.highSeverityValues?.length || 0);
+    }, 0);
+    const mediumSeverity = results.worksheets.reduce((sum: number, ws: any) => {
+        const analysis = ws.hardCodedValueAnalysis;
+        return sum + (analysis?.mediumSeverityValues?.length || 0);
+    }, 0);
+    const lowSeverity = results.worksheets.reduce((sum: number, ws: any) => {
+        const analysis = ws.hardCodedValueAnalysis;
+        return sum + (analysis?.lowSeverityValues?.length || 0);
+    }, 0);
+    const infoSeverity = results.worksheets.reduce((sum: number, ws: any) => {
+        const analysis = ws.hardCodedValueAnalysis;
+        return sum + (analysis?.infoSeverityValues?.length || 0);
+    }, 0);
+    
+    document.getElementById('highConfidenceValues')!.textContent = highSeverity.toString();
+    document.getElementById('mediumConfidenceValues')!.textContent = mediumSeverity.toString();
+    document.getElementById('lowConfidenceValues')!.textContent = lowSeverity.toString();
+    
+    // Display hard-coded values list
+    displayHardCodedValues(results.worksheets);
     
     // Display worksheet details
     const worksheetDetails = document.getElementById('worksheetDetails')!;
@@ -66,6 +117,106 @@ function displayResults(results: any): void {
     
     // Show results section
     document.getElementById('resultsSection')!.style.display = 'block';
+}
+
+/**
+ * Display hard-coded values in the UI
+ */
+function displayHardCodedValues(worksheets: any[]): void {
+    const hardCodedValuesList = document.getElementById('hardCodedValuesList')!;
+    hardCodedValuesList.innerHTML = '';
+    
+    // Collect all hard-coded values from all worksheets with null checks
+    const allHardCodedValues: any[] = [];
+    worksheets.forEach(worksheet => {
+        const analysis = worksheet.hardCodedValueAnalysis;
+        if (analysis) {
+            allHardCodedValues.push(
+                ...(analysis.highSeverityValues || []),
+                ...(analysis.mediumSeverityValues || []),
+                ...(analysis.lowSeverityValues || [])
+            );
+        }
+    });
+    
+    // Sort by severity level (high first) and then by value
+    allHardCodedValues.sort((a, b) => {
+        const severityOrder: { [key: string]: number } = { 'High': 0, 'Medium': 1, 'Low': 2, 'Info': 3 };
+        if (severityOrder[a.severity] !== severityOrder[b.severity]) {
+            return severityOrder[a.severity] - severityOrder[b.severity];
+        }
+        return a.value.localeCompare(b.value);
+    });
+    
+    // Display hard-coded values (limit to first 50 for performance)
+    const displayValues = allHardCodedValues.slice(0, 50);
+    displayValues.forEach(value => {
+        const valueItem = createHardCodedValueItem(value);
+        hardCodedValuesList.appendChild(valueItem);
+    });
+    
+    if (allHardCodedValues.length > 50) {
+        const moreItem = document.createElement('div');
+        moreItem.className = 'hard-coded-value-item';
+        moreItem.innerHTML = `<div class="hard-coded-value-content">... and ${allHardCodedValues.length - 50} more hard-coded values</div>`;
+        hardCodedValuesList.appendChild(moreItem);
+    }
+}
+
+/**
+ * Create a hard-coded value item element with enhanced inconsistency information
+ */
+function createHardCodedValueItem(value: any): HTMLElement {
+    const item = document.createElement('div');
+    item.className = `hard-coded-value-item ${value.severity.toLowerCase()}-confidence`;
+    
+    const repetitionInfo = value.isRepeated ? ` (Repeated ${value.repetitionCount} times)` : '';
+    const inconsistencyBadge = value.isInconsistent ? 
+        `<span class="inconsistency-badge ${value.inconsistencyType}">${getInconsistencyLabel(value.inconsistencyType)}</span>` : '';
+    
+    let nearbyPatternsHtml = '';
+    if (value.nearbyPatterns && value.nearbyPatterns.length > 0) {
+        nearbyPatternsHtml = `<div class="nearby-patterns">
+            <strong>Nearby formulas:</strong>
+            <ul>${value.nearbyPatterns.map((p: string) => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
+        </div>`;
+    }
+    
+    item.innerHTML = `
+        <div class="hard-coded-value-header">
+            <span class="hard-coded-value-address">${value.cellAddress}</span>
+            <span class="hard-coded-value-confidence ${value.severity.toLowerCase()}">${value.severity}</span>
+            ${inconsistencyBadge}
+        </div>
+        <div class="hard-coded-value-content">${escapeHtml(value.context)}</div>
+        <div class="hard-coded-value-reason">
+            <strong>Value:</strong> "${value.value}"${repetitionInfo}<br>
+            <strong>Issue:</strong> ${value.rationale}<br>
+            <strong>Suggested Fix:</strong> ${value.suggestedFix}
+            ${value.expectedPattern ? `<br><strong>Expected:</strong> ${value.expectedPattern}` : ''}
+        </div>
+        ${nearbyPatternsHtml}
+    `;
+    
+    return item;
+}
+
+/**
+ * Get a user-friendly label for inconsistency types
+ */
+function getInconsistencyLabel(type: string): string {
+    switch(type) {
+        case 'value_mismatch':
+            return 'Inconsistent Value';
+        case 'range_endpoint':
+            return 'Fixed Range';
+        case 'pattern_deviation':
+            return 'Pattern Deviation';
+        case 'isolated_hardcode':
+            return 'Isolated Hard-code';
+        default:
+            return 'Inconsistent';
+    }
 }
 
 /**
@@ -89,12 +240,16 @@ function createWorksheetCard(worksheet: any): HTMLElement {
                 <span class="worksheet-stat-label">Unique Formulas</span>
             </div>
             <div class="worksheet-stat">
-                <span class="worksheet-stat-number">${worksheet.totalCells}</span>
+                <span class="worksheet-stat-number">${worksheet.cellCountAnalysis.totalCells}</span>
                 <span class="worksheet-stat-label">Total Cells</span>
             </div>
             <div class="worksheet-stat">
                 <span class="worksheet-stat-number">${worksheet.formulaComplexity}</span>
                 <span class="worksheet-stat-label">Complexity</span>
+            </div>
+            <div class="worksheet-stat">
+                <span class="worksheet-stat-number">${worksheet.hardCodedValueAnalysis?.totalHardCodedValues || 0}</span>
+                <span class="worksheet-stat-label">Hard-coded</span>
             </div>
         </div>
         <div class="formula-list" id="formulaList_${worksheet.name.replace(/\s+/g, '_')}">
@@ -170,6 +325,26 @@ async function exportResults(): Promise<void> {
 
             setCellValue(`A${row}`, 'Unique Formulas:');
             setCellValue(`B${row}`, analysisResults.uniqueFormulas);
+            row++;
+
+            setCellValue(`A${row}`, 'Total Cells:');
+            setCellValue(`B${row}`, analysisResults.totalCells);
+            row++;
+
+            setCellValue(`A${row}`, 'Cells with Formulas:');
+            setCellValue(`B${row}`, analysisResults.totalCellsWithFormulas);
+            row++;
+
+            setCellValue(`A${row}`, 'Cells with Values:');
+            setCellValue(`B${row}`, analysisResults.totalCellsWithValues);
+            row++;
+
+            setCellValue(`A${row}`, 'Empty Cells:');
+            setCellValue(`B${row}`, analysisResults.totalCells - analysisResults.totalCellsWithFormulas - analysisResults.totalCellsWithValues);
+            row++;
+
+            setCellValue(`A${row}`, 'Hard-coded Values:');
+            setCellValue(`B${row}`, analysisResults.totalHardCodedValues);
             row += 2;
 
             // Worksheet details
@@ -182,10 +357,14 @@ async function exportResults(): Promise<void> {
             setCellValue(`B${row}`, 'Total Formulas');
             setCellValue(`C${row}`, 'Unique Formulas');
             setCellValue(`D${row}`, 'Total Cells');
-            setCellValue(`E${row}`, 'Complexity');
+            setCellValue(`E${row}`, 'Cells with Formulas');
+            setCellValue(`F${row}`, 'Cells with Values');
+            setCellValue(`G${row}`, 'Empty Cells');
+            setCellValue(`H${row}`, 'Hard-coded Values');
+            setCellValue(`I${row}`, 'Complexity');
 
             // Make headers bold
-            reportSheet.getRange(`A${row}:E${row}`).format.font.bold = true;
+            reportSheet.getRange(`A${row}:I${row}`).format.font.bold = true;
             row++;
 
             // Add worksheet data
@@ -193,8 +372,12 @@ async function exportResults(): Promise<void> {
                 setCellValue(`A${row}`, worksheet.name);
                 setCellValue(`B${row}`, worksheet.totalFormulas);
                 setCellValue(`C${row}`, worksheet.uniqueFormulas);
-                setCellValue(`D${row}`, worksheet.totalCells);
-                setCellValue(`E${row}`, worksheet.formulaComplexity);
+                setCellValue(`D${row}`, worksheet.cellCountAnalysis.totalCells);
+                setCellValue(`E${row}`, worksheet.cellCountAnalysis.cellsWithFormulas);
+                setCellValue(`F${row}`, worksheet.cellCountAnalysis.cellsWithValues);
+                setCellValue(`G${row}`, worksheet.cellCountAnalysis.emptyCells);
+                setCellValue(`H${row}`, worksheet.hardCodedValueAnalysis.totalHardCodedValues);
+                setCellValue(`I${row}`, worksheet.formulaComplexity);
                 row++;
             });
 
