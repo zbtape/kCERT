@@ -22,7 +22,7 @@ let analysisResults: any = null;
 async function analyzeFormulas(): Promise<void> {
     try {
         showLoadingIndicator(true);
-        showStatusMessage('Starting formula analysis...', 'info');
+        showStatusMessage('Starting formula analysis (vNext massive-model fix)...', 'info');
         
         const options = {
             includeEmptyCells: (document.getElementById('includeEmptyCells') as HTMLInputElement).checked,
@@ -31,14 +31,17 @@ async function analyzeFormulas(): Promise<void> {
         
         await Excel.run(async (context) => {
             const analyzer = new FormulaAnalyzer();
-            
-            // Show progress for large models
-            showStatusMessage('Analyzing workbook structure...', 'info');
-            const results = await analyzer.analyzeWorkbook(context, options);
+
+            const progress = (message: string) => {
+                showStatusMessage(message, 'info');
+            };
+
+            showStatusMessage('Analyzing workbook structure (streaming batches)...', 'info');
+            const results = await analyzer.analyzeWorkbook(context, options, progress);
             
             // Show specific message for massive models
             if (results.totalCells > 50000) {
-                showStatusMessage('MASSIVE MODEL detected - using minimal analysis mode for performance', 'info');
+                showStatusMessage('MASSIVE MODEL detected - streaming + safe fallback engaged', 'info');
             }
             
             analysisResults = results;
@@ -254,6 +257,9 @@ function createWorksheetCard(worksheet: any): HTMLElement {
         </div>
         <div class="formula-list" id="formulaList_${worksheet.name.replace(/\s+/g, '_')}">
             <h4>Unique Formulas:</h4>
+            <div class="worksheet-meta">
+                <span class="worksheet-mode">Mode: ${worksheet.analysisMode || 'standard'}${worksheet.fallbackReason ? ` (${worksheet.fallbackReason})` : ''}</span>
+            </div>
             ${worksheet.uniqueFormulasList.map((formula: any) => `
                 <div class="formula-item">
                     <div class="formula-text">${escapeHtml(formula.formula)}</div>
