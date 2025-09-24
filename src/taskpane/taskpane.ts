@@ -1,18 +1,25 @@
 import './taskpane.css';
 import { FormulaAnalyzer } from '../shared/FormulaAnalyzer';
+import { WorksheetMapGenerator, MapSymbol, MapCounts } from '../shared/WorksheetMapGenerator';
 
 // Wait for Office.js to load
 Office.onReady((info) => {
     if (info.host === Office.HostType.Excel) {
         document.getElementById('analyzeFormulas')?.addEventListener('click', analyzeFormulas);
+        document.getElementById('generateMaps')?.addEventListener('click', generateMaps);
+        document.getElementById('refreshMapSheets')?.addEventListener('click', refreshMapSheetList);
         document.getElementById('exportResults')?.addEventListener('click', exportResults);
         document.getElementById('generateAuditTrail')?.addEventListener('click', generateAuditTrail);
         
         // Components are now initialized
+        refreshMapSheetList();
+        renderMapRunSummary([]);
     }
 });
 
 let analysisResults: any = null;
+let mapGenerator: WorksheetMapGenerator | null = null;
+let mapSheetCache: string[] = [];
 
 // Fabric UI components are no longer needed - using standard HTML checkboxes
 
@@ -388,7 +395,7 @@ async function exportResults(): Promise<void> {
             reportSheet.getRange(`A${row}`).format.font.bold = true;
             row++;
 
-            results.worksheets.forEach((worksheet: any) => {
+            analysisResults.worksheets.forEach((worksheet: any) => {
                 setCellValue(`A${row}`, worksheet.name);
                 setCellValue(`B${row}`, worksheet.totalFormulas);
                 setCellValue(`C${row}`, worksheet.uniqueFormulas);
@@ -404,7 +411,7 @@ async function exportResults(): Promise<void> {
             // setCellValue(`A${row}`, 'Formula List (Example)');
             // reportSheet.getRange(`A${row}`).format.font.bold = true;
             // row++;
-            // results.worksheets.forEach((worksheet: any) => {
+            // analysisResults.worksheets.forEach((worksheet: any) => {
             //     setCellValue(`A${row}`, worksheet.name);
             //     worksheet.uniqueFormulasList.forEach((formula: any) => {
             //         setCellValue(`B${row}`, formula.formula);
@@ -461,6 +468,216 @@ function showLoadingIndicator(isLoading: boolean): void {
     }
 }
 
+function getSelectedMapSheets(): string[] {
+    const listContainer = document.getElementById('mapSheetChecklist');
+    if (!listContainer) {
+        return [];
+    }
+
+    const selected: string[] = [];
+    listContainer.querySelectorAll('input[type="checkbox"]').forEach(box => {
+        const input = box as HTMLInputElement;
+        if (input.checked) {
+            selected.push(input.value);
+        }
+    });
+    return selected;
+}
+
+async function generateMaps(): Promise<void> {
+    try {
+        showLoadingIndicator(true);
+        showStatusMessage('Generating worksheet maps...', 'info');
+        renderMapRunSummary([]);
+
+        const selectedSheets = getSelectedMapSheets();
+        if (selectedSheets.length === 0) {
+            showStatusMessage('Please select at least one worksheet to map.', 'warning');
+            renderMapRunSummary([]);
+            return;
+        }
+
+        await Excel.run(async (context) => {
+            const workbook = context.workbook;
+            const worksheets = workbook.worksheets;
+            worksheets.load('items/name');
+            await context.sync();
+
+            const skipSheets = new Set(['kCERT_Analysis_Report']);
+            const targets = worksheets.items.filter(ws => selectedSheets.includes(ws.name) && !skipSheets.has(ws.name));
+
+            if (targets.length === 0) {
+                showStatusMessage('No worksheets selected for mapping.', 'warning');
+                return;
+            }
+
+            if (!mapGenerator) {
+                mapGenerator = new WorksheetMapGenerator({ includeHidden: true });
+            }
+
+            const summary: string[] = [];
+            for (const worksheet of targets) {
+                showStatusMessage(`Mapping worksheet "${worksheet.name}"...`, 'info');
+                const result = await mapGenerator.generate(context, worksheet, message => {
+                    showStatusMessage(message, 'info');
+                });
+
+                if (result.skipped) {
+                    showStatusMessage(`Skipping ${worksheet.name}: ${result.skipReason}`, 'warning');
+                    summary.push(`${worksheet.name}: skipped (${result.skipReason})`);
+                    continue;
+                }
+
+                await writeMapSheet(context, worksheet.name, result);
+                summary.push(`${worksheet.name}: generated (${result.rowCount}×${result.columnCount})`);
+            }
+
+            showStatusMessage('Worksheet maps generated successfully.', 'success');
+            renderMapRunSummary(summary);
+        });
+
+        await refreshMapSheetList();
+    } catch (error) {
+        console.error('Error generating maps', error);
+        showStatusMessage(`Error generating maps: ${getErrorMessage(error)}`, 'error');
+        renderMapRunSummary([]);
+    } finally {
+        showLoadingIndicator(false);
+    }
+}
+
+async function writeMapSheet(
+    context: Excel.RequestContext,
+    worksheetName: string,
+    map: Awaited<ReturnType<WorksheetMapGenerator['generate']>>
+): Promise<void> {
+    const workbook = context.workbook;
+    const sheetName = generateMapSheetName(worksheetName);
+
+    const existing = workbook.worksheets.getItemOrNullObject(sheetName);
+    existing.load('isNullObject');
+    await context.sync();
+    if (!existing.isNullObject) {
+        existing.delete();
+        await context.sync();
+    }
+
+    const mapSheet = workbook.worksheets.add(sheetName);
+
+    const { rowCount, columnCount, symbols, counts, arrayAreas, usedRangeAddress } = map;
+
+    if (rowCount === 0 || columnCount === 0) {
+        mapSheet.getRange('A1').values = [[`No used range detected for ${worksheetName}.`]];
+        mapSheet.getRange('A2').values = [[`Reason: ${map.skipReason ?? 'unknown'}`]];
+        await context.sync();
+        return;
+    }
+
+    const targetRange = mapSheet.getRangeByIndexes(0, 0, rowCount, columnCount);
+    targetRange.values = symbols;
+    targetRange.format.font.name = 'Consolas';
+    targetRange.format.font.size = 10;
+    targetRange.format.columnWidth = 12;
+    targetRange.format.rowHeight = 18;
+    targetRange.format.horizontalAlignment = 'Center';
+    targetRange.format.verticalAlignment = 'Center';
+
+    applyMapColors(targetRange, symbols);
+
+    arrayAreas.forEach(area => {
+        const borderRange = mapSheet.getRangeByIndexes(area.top, area.left, area.bottom - area.top + 1, area.right - area.left + 1);
+        borderRange.format.borders.getItem('EdgeTop').style = 'Continuous';
+        borderRange.format.borders.getItem('EdgeTop').weight = 'Thick';
+        borderRange.format.borders.getItem('EdgeBottom').style = 'Continuous';
+        borderRange.format.borders.getItem('EdgeBottom').weight = 'Thick';
+        borderRange.format.borders.getItem('EdgeLeft').style = 'Continuous';
+        borderRange.format.borders.getItem('EdgeLeft').weight = 'Thick';
+        borderRange.format.borders.getItem('EdgeRight').style = 'Continuous';
+        borderRange.format.borders.getItem('EdgeRight').weight = 'Thick';
+    });
+
+    const legendStartRow = rowCount + 2;
+    const legendRange = mapSheet.getRange(`A${legendStartRow}:D${legendStartRow + 8}`);
+
+    legendRange.values = buildLegendRows(worksheetName, usedRangeAddress, counts, map.anomalies);
+    legendRange.format.font.bold = true;
+    legendRange.format.columnWidth = 30;
+
+    await context.sync();
+}
+
+function generateMapSheetName(base: string): string {
+    const truncated = `${base}_maps`.substring(0, 31);
+    if (truncated === base) {
+        return `${base}_maps`.substring(0, 31);
+    }
+    return truncated;
+}
+
+function applyMapColors(range: Excel.Range, symbols: MapSymbol[][]): void {
+    const rows = symbols.length;
+    if (rows === 0) {
+        return;
+    }
+    const cols = symbols[0].length;
+
+    const backgrounds: string[][] = Array.from({ length: rows }, () => new Array<string>(cols).fill(''));
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const symbol = symbols[r][c];
+            backgrounds[r][c] = colorForSymbol(symbol);
+        }
+    }
+    range.format.fill.color = 'white';
+    range.format.font.color = '#1b1a19';
+
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const color = backgrounds[r][c];
+            if (!color || color === '#FFFFFF') {
+                continue;
+            }
+            range.getCell(r, c).format.fill.color = color;
+        }
+    }
+}
+
+function colorForSymbol(symbol: MapSymbol): string {
+    switch (symbol) {
+        case 'F':
+            return '#7030A0';
+        case '<':
+            return '#4472C4';
+        case '^':
+            return '#5B9BD5';
+        case '+':
+            return '#2F5597';
+        case 'L':
+            return '#D9D9D9';
+        case 'N':
+            return '#FFC000';
+        case 'A':
+            return '#9E480E';
+        default:
+            return '#FFFFFF';
+    }
+}
+
+function buildLegendRows(
+    worksheetName: string,
+    usedRange: string,
+    counts: MapCounts,
+    anomalies: { changeOfDirection: number; horizontalBreaks: number; verticalBreaks: number }
+): string[][] {
+    return [
+        [`Worksheet`, worksheetName, 'Used Range', usedRange],
+        [`Legend`, `F: Unique formula (${counts['F']})`, `^: Copy from above (${counts['^']})`, `+: Copy both (${counts['+']})`],
+        ['', `<: Copy from left (${counts['<']})`, `L: Label (${counts['L']})`, `N: Numeric input (${counts['N']})`],
+        ['', `A: Array formula (${counts['A']})`, '', ''],
+        ['Anomalies', `Direction switches: ${anomalies.changeOfDirection}`, `Horizontal breaks: ${anomalies.horizontalBreaks}`, `Vertical breaks: ${anomalies.verticalBreaks}`],
+    ];
+}
+
 /**
  * Helper to show status messages
  */
@@ -496,4 +713,83 @@ function escapeHtml(unsafe: string): string {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+async function refreshMapSheetList(): Promise<void> {
+    const container = document.getElementById('mapSheetChecklist');
+    if (!container) {
+        return;
+    }
+    container.innerHTML = '<div class="map-sheet-placeholder">Loading worksheets...</div>';
+
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            worksheets.load('items/name');
+            await context.sync();
+
+            mapSheetCache = worksheets.items
+                .map(ws => ws.name)
+                .filter(name => name !== 'kCERT_Analysis_Report' && !name.endsWith('_maps'));
+
+            renderMapSheetChecklist(mapSheetCache);
+        });
+    } catch (error) {
+        console.error('Failed to refresh worksheet list', error);
+        container.innerHTML = '<div class="map-sheet-placeholder">Unable to load worksheets</div>';
+    }
+}
+
+function renderMapSheetChecklist(sheets: string[]): void {
+    const container = document.getElementById('mapSheetChecklist');
+    if (!container) {
+        return;
+    }
+
+    if (sheets.length === 0) {
+        container.innerHTML = '<div class="map-sheet-placeholder">No worksheets available</div>';
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    sheets.forEach(sheetName => {
+        const label = document.createElement('label');
+        label.className = 'map-sheet-item';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = sheetName;
+        input.checked = true;
+
+        const span = document.createElement('span');
+        span.textContent = sheetName;
+
+        label.appendChild(input);
+        label.appendChild(span);
+        fragment.appendChild(label);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(fragment);
+}
+
+function renderMapRunSummary(summary: string[]): void {
+    const summaryContainer = document.getElementById('mapRunSummary');
+    if (!summaryContainer) {
+        return;
+    }
+
+    if (!summary || summary.length === 0) {
+        summaryContainer.style.display = 'none';
+        summaryContainer.innerHTML = '';
+        return;
+    }
+
+    summaryContainer.style.display = 'block';
+    summaryContainer.innerHTML = `
+        <strong>Recent map run:</strong>
+        <ul class="map-summary-list">
+            ${summary.map(entry => `<li>${escapeHtml(entry)}</li>`).join('')}
+        </ul>
+    `;
 }

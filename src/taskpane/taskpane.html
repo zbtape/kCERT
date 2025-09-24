@@ -58,6 +58,37 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="map-controls">
+                    <div class="map-actions">
+                        <button id="generateMaps" class="ms-Button">
+                            <span class="ms-Button-label">Generate Worksheet Maps</span>
+                        </button>
+                        <button id="refreshMapSheets" class="ms-Button map-refresh-button" type="button">
+                            <span class="ms-Button-label">Refresh List</span>
+                        </button>
+                    </div>
+                    <div class="map-selection">
+                        <label class="map-selection-label">Select worksheets to include</label>
+                        <div id="mapSheetChecklist" class="map-sheet-list">
+                            <div class="map-sheet-placeholder">Loading worksheets...</div>
+                        </div>
+                    </div>
+                    <div id="mapRunSummary" class="map-run-summary" style="display: none;"></div>
+                    <div class="map-legend" id="mapLegendPanel">
+                        <h5>Worksheet Map Legend</h5>
+                        <ul>
+                            <li><span class="map-symbol map-symbol-f">F</span> Unique formula</li>
+                            <li><span class="map-symbol map-symbol-left">&lt;</span> Copy from the left</li>
+                            <li><span class="map-symbol map-symbol-up">^</span> Copy from above</li>
+                            <li><span class="map-symbol map-symbol-both">+</span> Copy from both left and above</li>
+                            <li><span class="map-symbol map-symbol-label">L</span> Label / descriptive text</li>
+                            <li><span class="map-symbol map-symbol-input">N</span> Numeric input</li>
+                            <li><span class="map-symbol map-symbol-array">A</span> Array formula spill</li>
+                        </ul>
+                        <p class="map-legend-note">Maps highlight copy direction breaks and blank cells within copy runs in the task pane summary after generation.</p>
+                    </div>
+                </div>
             </section>
 
             <!-- Results Section -->

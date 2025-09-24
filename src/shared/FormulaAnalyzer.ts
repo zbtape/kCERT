@@ -5,6 +5,8 @@
  * analysing each block immediately, and discarding it before moving on.
  */
 
+import { getCellAddress, isEmpty, isFormula, normalizeFormula, twoDecimals } from './FormulaUtils';
+
 export interface AnalysisOptions {
     includeEmptyCells: boolean;
     groupSimilarFormulas: boolean;
@@ -178,14 +180,14 @@ export class FormulaAnalyzer {
                         const value = values[r][c];
                         const absRow = usedRange.rowIndex + rowStart + r;
                         const absCol = usedRange.columnIndex + colStart + c;
-                        const address = this.getCellAddress(absRow, absCol);
+                        const address = getCellAddress(absRow, absCol);
 
-                        if (this.isFormula(formula)) {
+                        if (isFormula(formula)) {
                             cellsWithFormulas++;
                             totalFormulas++;
 
                             const key = options.groupSimilarFormulas
-                                ? this.normalizeFormula(formula)
+                                ? normalizeFormula(formula)
                                 : formula;
 
                             let info = formulaMap.get(key);
@@ -201,7 +203,7 @@ export class FormulaAnalyzer {
                             if (hardCodes.length < FormulaAnalyzer.MAX_HARDCODED_PER_SHEET) {
                                 hardCodes.push(...this.detectHardCodedValues(formula, address));
                             }
-                        } else if (!this.isEmpty(value)) {
+                        } else if (!isEmpty(value)) {
                             cellsWithValues++;
                         }
                     }
@@ -223,8 +225,8 @@ export class FormulaAnalyzer {
                 cellsWithFormulas,
                 cellsWithValues,
                 emptyCells,
-                formulaPercentage: this.twoDecimals(totalCells > 0 ? (cellsWithFormulas / totalCells) * 100 : 0),
-                valuePercentage: this.twoDecimals(totalCells > 0 ? (cellsWithValues / totalCells) * 100 : 0)
+                formulaPercentage: twoDecimals(totalCells > 0 ? (cellsWithFormulas / totalCells) * 100 : 0),
+                valuePercentage: twoDecimals(totalCells > 0 ? (cellsWithValues / totalCells) * 100 : 0)
             },
             hardCodedValueAnalysis: this.finaliseHardCodes(hardCodes),
             analysisMode: 'streaming'
@@ -277,8 +279,8 @@ export class FormulaAnalyzer {
                 cellsWithFormulas,
                 cellsWithValues,
                 emptyCells,
-                formulaPercentage: this.twoDecimals(totalCells > 0 ? (cellsWithFormulas / totalCells) * 100 : 0),
-                valuePercentage: this.twoDecimals(totalCells > 0 ? (cellsWithValues / totalCells) * 100 : 0)
+                formulaPercentage: twoDecimals(totalCells > 0 ? (cellsWithFormulas / totalCells) * 100 : 0),
+                valuePercentage: twoDecimals(totalCells > 0 ? (cellsWithValues / totalCells) * 100 : 0)
             },
             hardCodedValueAnalysis: {
                 totalHardCodedValues: 0,
@@ -296,7 +298,7 @@ export class FormulaAnalyzer {
 
     private detectHardCodedValues(formula: string, address: string): HardCodedValue[] {
         const results: HardCodedValue[] = [];
-        if (!this.isFormula(formula)) {
+        if (!isFormula(formula)) {
             return results;
         }
 
@@ -428,23 +430,6 @@ export class FormulaAnalyzer {
         return range.getCell(rowStart, colStart).getResizedRange(rowCount - 1, colCount - 1);
     }
 
-    private isFormula(value: any): boolean {
-        return typeof value === 'string' && value.startsWith('=');
-    }
-
-    private isEmpty(value: any): boolean {
-        return value === null || value === undefined || value === '';
-    }
-
-    private normalizeFormula(formula: string): string {
-        let normalized = formula;
-        normalized = normalized.replace(/\$[A-Z]+\$\d+/g, '<ABS>');
-        normalized = normalized.replace(/\$?[A-Z]+\$?\d+/g, '<REL>');
-        normalized = normalized.replace(/<REL>:<REL>/g, '<RANGE>');
-        normalized = normalized.replace(/<ABS>:<ABS>/g, '<ABS_RANGE>');
-        return normalized;
-    }
-
     private severityForNumber(value: string): HardCodedValue['severity'] {
         const num = Number(value);
         if (Number.isNaN(num)) {
@@ -495,24 +480,5 @@ export class FormulaAnalyzer {
         if (start > 0) snippet = '…' + snippet;
         if (end < formula.length) snippet += '…';
         return snippet;
-    }
-
-    private getCellAddress(row: number, col: number): string {
-        return `${this.columnLetter(col + 1)}${row + 1}`;
-    }
-
-    private columnLetter(index: number): string {
-        let result = '';
-        let n = index;
-        while (n > 0) {
-            n--;
-            result = String.fromCharCode(65 + (n % 26)) + result;
-            n = Math.floor(n / 26);
-        }
-        return result;
-    }
-
-    private twoDecimals(value: number): number {
-        return Math.round(value * 100) / 100;
     }
 }

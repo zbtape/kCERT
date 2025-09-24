@@ -83,10 +83,154 @@
 }
 
 /* Button styling */
-#analyzeFormulas {
+button#analyzeFormulas,
+button#generateMaps,
+button#refreshMapSheets {
     width: 100%;
-    margin: 20px 0;
+    margin: 12px 0;
     padding: 12px;
+}
+
+.map-controls {
+    margin-top: 12px;
+    padding: 16px;
+    border: 1px solid #e1dfdd;
+    border-radius: 6px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.map-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.map-actions .ms-Button {
+    flex: 1;
+}
+
+.map-refresh-button {
+    background: #edebe9;
+    color: #323130;
+}
+
+.map-selection {
+    display: flex;
+    flex-direction: column;
+}
+
+.map-selection-label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #201f1e;
+}
+
+.map-sheet-list {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid #e1dfdd;
+    border-radius: 4px;
+    padding: 8px;
+    background: #faf9f8;
+}
+
+.map-sheet-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 13px;
+}
+
+.map-sheet-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #0078d4;
+}
+
+.map-sheet-placeholder {
+    font-size: 12px;
+    color: #605e5c;
+    font-style: italic;
+    padding: 6px;
+}
+
+.map-run-summary {
+    font-size: 12px;
+    color: #605e5c;
+}
+
+.map-run-summary strong {
+    color: #323130;
+}
+
+.map-summary-list {
+    margin: 6px 0 0 0;
+    padding-left: 18px;
+    color: #605e5c;
+}
+
+.map-summary-list li {
+    margin: 2px 0;
+}
+
+.map-legend {
+    border-top: 1px solid #edebe9;
+    padding-top: 12px;
+}
+
+.map-legend h5 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: #201f1e;
+}
+
+.map-legend ul {
+    margin: 0;
+    padding-left: 16px;
+    list-style: none;
+}
+
+.map-legend li {
+    font-size: 12px;
+    color: #605e5c;
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.map-symbol {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+    color: #ffffff;
+}
+
+.map-symbol-f { background: #7030A0; }
+.map-symbol-left { background: #4472C4; }
+.map-symbol-up { background: #5B9BD5; }
+.map-symbol-both { background: #2F5597; }
+.map-symbol-label { background: #7F7F7F; }
+.map-symbol-input { background: #FFC000; color: #1b1a19; }
+.map-symbol-array { background: #9E480E; }
+
+.map-legend-note {
+    font-size: 11px;
+    color: #8a8886;
+    margin-top: 8px;
+}
+
+.map-legend ul li .map-symbol-input {
+    color: #1b1a19;
 }
 
 /* Results section */
