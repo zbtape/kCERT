@@ -25,6 +25,17 @@ let mapSheetCache: string[] = [];
 
 // Fabric UI components are no longer needed - using standard HTML checkboxes
 
+const formatNumber = (value: number | string | undefined | null): string => {
+    if (value === undefined || value === null) {
+        return '0';
+    }
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+        return '0';
+    }
+    return numeric.toLocaleString();
+};
+
 /**
  * Main function to analyze formulas in the workbook
  */
@@ -58,7 +69,7 @@ async function analyzeFormulas(): Promise<void> {
             
             const totalCells = results.totalCells;
             if (totalCells > 100000) {
-                showStatusMessage(`Analysis completed! Processed ${totalCells.toLocaleString()} cells across ${results.totalWorksheets} worksheets.`, 'success');
+                showStatusMessage(`Analysis completed! Processed ${formatNumber(totalCells)} cells across ${formatNumber(results.totalWorksheets)} worksheets.`, 'success');
             } else {
                 showStatusMessage('Formula analysis completed successfully!', 'success');
             }
@@ -82,17 +93,17 @@ async function analyzeFormulas(): Promise<void> {
  */
 function displayResults(results: any): void {
     // Update summary statistics
-    document.getElementById('totalWorksheets')!.textContent = results.totalWorksheets.toString();
-    document.getElementById('totalFormulas')!.textContent = results.totalFormulas.toString();
-    document.getElementById('uniqueFormulas')!.textContent = results.uniqueFormulas.toString();
-    document.getElementById('totalHardCodedValues')!.textContent = results.totalHardCodedValues.toString();
-    
+    document.getElementById('totalWorksheets')!.textContent = formatNumber(results.totalWorksheets);
+    document.getElementById('totalFormulas')!.textContent = formatNumber(results.totalFormulas);
+    document.getElementById('uniqueFormulas')!.textContent = formatNumber(results.uniqueFormulas);
+    document.getElementById('totalHardCodedValues')!.textContent = formatNumber(results.totalHardCodedValues);
+
     // Update cell count analysis
-    document.getElementById('totalCells')!.textContent = results.totalCells.toString();
-    document.getElementById('cellsWithFormulas')!.textContent = results.totalCellsWithFormulas.toString();
-    document.getElementById('cellsWithValues')!.textContent = results.totalCellsWithValues.toString();
-    document.getElementById('emptyCells')!.textContent = (results.totalCells - results.totalCellsWithFormulas - results.totalCellsWithValues).toString();
-    
+    document.getElementById('totalCells')!.textContent = formatNumber(results.totalCells);
+    document.getElementById('cellsWithFormulas')!.textContent = formatNumber(results.totalCellsWithFormulas);
+    document.getElementById('cellsWithValues')!.textContent = formatNumber(results.totalCellsWithValues);
+    document.getElementById('emptyCells')!.textContent = formatNumber(results.totalCells - results.totalCellsWithFormulas - results.totalCellsWithValues);
+
     // Update hard-coded values analysis with null checks
     const highSeverity = results.worksheets.reduce((sum: number, ws: any) => {
         const analysis = ws.hardCodedValueAnalysis;
@@ -111,9 +122,9 @@ function displayResults(results: any): void {
         return sum + (analysis?.infoSeverityValues?.length || 0);
     }, 0);
     
-    document.getElementById('highConfidenceValues')!.textContent = highSeverity.toString();
-    document.getElementById('mediumConfidenceValues')!.textContent = mediumSeverity.toString();
-    document.getElementById('lowConfidenceValues')!.textContent = lowSeverity.toString();
+    document.getElementById('highConfidenceValues')!.textContent = formatNumber(highSeverity);
+    document.getElementById('mediumConfidenceValues')!.textContent = formatNumber(mediumSeverity);
+    document.getElementById('lowConfidenceValues')!.textContent = formatNumber(lowSeverity);
     
     // Display hard-coded values list
     displayHardCodedValues(results.worksheets);
@@ -170,7 +181,7 @@ function displayHardCodedValues(worksheets: any[]): void {
     if (allHardCodedValues.length > 50) {
         const moreItem = document.createElement('div');
         moreItem.className = 'hard-coded-value-item';
-        moreItem.innerHTML = `<div class="hard-coded-value-content">... and ${allHardCodedValues.length - 50} more hard-coded values</div>`;
+        moreItem.innerHTML = `<div class="hard-coded-value-content">... and ${formatNumber(allHardCodedValues.length - 50)} more hard-coded values</div>`;
         hardCodedValuesList.appendChild(moreItem);
     }
 }
@@ -182,7 +193,7 @@ function createHardCodedValueItem(value: any): HTMLElement {
     const item = document.createElement('div');
     item.className = `hard-coded-value-item ${value.severity.toLowerCase()}-confidence`;
     
-    const repetitionInfo = value.isRepeated ? ` (Repeated ${value.repetitionCount} times)` : '';
+    const repetitionInfo = value.isRepeated ? ` (Repeated ${formatNumber(value.repetitionCount)} times)` : '';
     const inconsistencyBadge = value.isInconsistent ? 
         `<span class="inconsistency-badge ${value.inconsistencyType}">${getInconsistencyLabel(value.inconsistencyType)}</span>` : '';
     
@@ -248,15 +259,15 @@ function createWorksheetCard(worksheet: any): HTMLElement {
         </div>
         <div class="worksheet-stats">
             <div class="worksheet-stat">
-                <span class="worksheet-stat-number">${worksheet.totalFormulas}</span>
+                <span class="worksheet-stat-number">${formatNumber(worksheet.totalFormulas)}</span>
                 <span class="worksheet-stat-label">Total Formulas</span>
             </div>
             <div class="worksheet-stat">
-                <span class="worksheet-stat-number">${worksheet.uniqueFormulas}</span>
+                <span class="worksheet-stat-number">${formatNumber(worksheet.uniqueFormulas)}</span>
                 <span class="worksheet-stat-label">Unique Formulas</span>
             </div>
             <div class="worksheet-stat">
-                <span class="worksheet-stat-number">${worksheet.cellCountAnalysis.totalCells}</span>
+                <span class="worksheet-stat-number">${formatNumber(worksheet.cellCountAnalysis.totalCells)}</span>
                 <span class="worksheet-stat-label">Total Cells</span>
             </div>
             <div class="worksheet-stat">
@@ -264,7 +275,7 @@ function createWorksheetCard(worksheet: any): HTMLElement {
                 <span class="worksheet-stat-label">Complexity</span>
             </div>
             <div class="worksheet-stat">
-                <span class="worksheet-stat-number">${worksheet.hardCodedValueAnalysis?.totalHardCodedValues || 0}</span>
+                <span class="worksheet-stat-number">${formatNumber(worksheet.hardCodedValueAnalysis?.totalHardCodedValues || 0)}</span>
                 <span class="worksheet-stat-label">Hard-coded</span>
             </div>
         </div>
@@ -276,7 +287,7 @@ function createWorksheetCard(worksheet: any): HTMLElement {
             ${worksheet.uniqueFormulasList.map((formula: any) => `
                 <div class="formula-item">
                     <div class="formula-text">${escapeHtml(formula.formula)}</div>
-                    <div class="formula-count">Used ${formula.count} time(s)</div>
+                    <div class="formula-count">Used ${formatNumber(formula.count)} time(s)</div>
                 </div>
             `).join('')}
         </div>
@@ -542,7 +553,7 @@ async function generateMaps(): Promise<void> {
                 }
 
                 await writeMapSheet(context, worksheet.name, result);
-                summary.push(`${worksheet.name}: generated (${result.rowCount}×${result.columnCount})`);
+                summary.push(`${worksheet.name}: generated (${formatNumber(result.rowCount)}×${formatNumber(result.columnCount)})`);
             }
 
             showStatusMessage('Worksheet maps generated successfully.', 'success');
