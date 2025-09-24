@@ -63,7 +63,11 @@
             <!-- Results Section -->
             <section id="resultsSection" class="results-section" style="display: none;">
                 <h3 class="ms-fontSize-l ms-fontWeight-semibold">Analysis Results</h3>
-                
+
+                <!-- Workbook Overview -->
+                <h4 class="section-title">Workbook Overview</h4>
+                <p class="section-help">High-level statistics for the entire workbook. Use this to gauge overall scale, duplication, and potential risk hot-spots before diving into individual sheets.</p>
+
                 <!-- Summary Card -->
                 <div id="summaryCard" class="summary-card ms-bgColor-neutralLighter">
                     <div class="ms-Grid">
@@ -99,6 +103,7 @@
                 <!-- Cell Count Analysis -->
                 <div id="cellCountAnalysis" class="analysis-section">
                     <h4 class="ms-fontSize-m ms-fontWeight-semibold">Cell Count Analysis</h4>
+                    <p class="section-help">Breakdown of cells across the entire workbook. “Cells with Formulas” and “Cells with Values” may overlap on different sheets; “Empty Cells” is calculated as total minus formulas minus values.</p>
                     <div class="ms-Grid">
                         <div class="ms-Grid-row">
                             <div class="ms-Grid-col ms-sm3">
@@ -132,6 +137,7 @@
                 <!-- Hard-coded Values Analysis -->
                 <div id="hardCodedValuesAnalysis" class="analysis-section">
                     <h4 class="ms-fontSize-m ms-fontWeight-semibold">Hard-coded Values Analysis</h4>
+                    <p class="section-help">Counts of likely hard-coded constants detected within formulas across the workbook. Severity reflects confidence: High (very likely an issue), Medium (possible), Low (informational). Review the list below for context and suggested fixes.</p>
                     <div class="ms-Grid">
                         <div class="ms-Grid-row">
                             <div class="ms-Grid-col ms-sm4">
@@ -160,6 +166,8 @@
                 </div>
 
                 <!-- Worksheet Details -->
+                <h4 class="section-title" style="margin-top:28px;">Worksheet Analyses</h4>
+                <p class="section-help">Each card summarizes one worksheet: analysis mode, formula counts, complexity, total cells, and detected hard-codes. Unique formulas are displayed in normalized form (e.g., <code>&lt;REL&gt;</code> for relative references, <code>&lt;ABS&gt;</code> for absolute references, <code>&lt;RANGE&gt;</code> for ranges) to group structurally similar formulas.</p>
                 <div id="worksheetDetails" class="worksheet-details">
                     <!-- Dynamic content will be inserted here -->
                 </div>
