@@ -89,7 +89,7 @@ export class FormulaAnalyzer {
         worksheets.load('items/name');
         await context.sync();
 
-        const skipSheets = new Set(['CERT_Analysis_Report', 'MRT_Analysis_Report']);
+        const skipSheets = new Set(['kCERT_Analysis_Report']);
         const targets = worksheets.items.filter(ws => !skipSheets.has(ws.name));
 
         const worksheetResults: WorksheetAnalysisResult[] = [];

@@ -1,10 +1,10 @@
-# Model Review Tool (MRT) - Excel Add-in
+# kCERT - KPMG Comprehensive Excel Review Tool
 
 A professional Excel add-in designed for analyzing and reviewing Excel-based models with comprehensive formula analysis and audit trail capabilities.
 
 ## Overview
 
-The Model Review Tool addresses the critical need for standardized, thorough review of Excel-based models used in business and risk management scenarios. It provides transparency into formula structures, creates audit trails, and helps ensure accuracy in model reviews.
+kCERT (KPMG Comprehensive Excel Review Tool) addresses the critical need for standardized, thorough review of Excel-based models used in business and risk management scenarios. It provides transparency into formula structures, creates audit trails, and helps ensure accuracy in model reviews.
 
 ## Features
 
@@ -68,16 +68,16 @@ The Model Review Tool addresses the critical need for standardized, thorough rev
 
 ### Running Formula Analysis
 
-1. **Open Excel** with a workbook containing formulas
-2. **Launch MRT** from the Home tab ribbon
-3. **Configure Options**:
-   - Include empty cells in analysis
-   - Group similar formulas for better organization
-4. **Click "Analyze Workbook Formulas"**
-5. **Review Results** in the task pane showing:
-   - Summary statistics (total worksheets, formulas, unique formulas)
-   - Per-worksheet breakdown
-   - List of unique formulas with usage counts
+1. **Open Excel** with the workbook you want to review.
+2. **Launch kCERT** from the Home tab ribbon to open the task pane.
+3. **Configure options** (include empty cells, group similar formulas) as needed.
+4. **Click "Analyze Workbook Formulas"**. The task pane displays live status updates:
+   - Every streamed block shows `Streaming SheetName: rows a-b, cols c-d` so you know progress on large sheets.
+   - When a worksheet exceeds the massive threshold (~150k cells), the pane announces the switch to "skim" mode.
+5. **Review results** in the task pane:
+   - Summary statistics (worksheets, total formulas, unique formulas, hard-coded values).
+   - Per-worksheet cards now include `Mode: streaming | massive-skim | skipped` plus a fallback reason if applicable.
+   - Each card lists the most common formulas, cell counts, and captured hard-coded literals (capped for performance).
 
 ### Exporting Results
 
@@ -106,17 +106,18 @@ MRT-Tool/
 
 ### Core Components
 
-- **FormulaAnalyzer Class**: Main analysis engine for processing Excel formulas
-- **Professional UI**: Microsoft Fabric UI components for consistent Office experience
-- **TypeScript**: Type-safe development with full Office.js API support
-- **Webpack**: Modern build system with hot reload for development
+- **FormulaAnalyzer (streaming engine)**: Processes worksheets in fixed-size blocks (default 200×120) to avoid loading entire sheets into memory.
+- **Progress Reporter**: Emits status strings for each block so the task pane reflects real-time progress and fallbacks.
+- **Task Pane UI**: Renders summary stats, per-worksheet cards, and exposes analysis modes / fallback reasons.
+- **TypeScript + Webpack**: Modern toolchain with live reload for development.
 
-### Formula Analysis Features
+### Streaming Analysis Highlights
 
-- **Formula Detection**: Identifies cells containing formulas vs. values
-- **Normalization**: Groups structurally similar formulas for better analysis
-- **Complexity Assessment**: Automatic scoring based on formula patterns
-- **Cell Reference Mapping**: Tracks formula usage across worksheets
+- **Block-based Loading**: Each worksheet is scanned block by block. Data is discarded immediately after processing, keeping memory usage flat.
+- **Massive-Skim Mode**: Workbooks above the cell threshold fall back to a lightweight count (formulas/constants) to avoid long waits. The UI marks these sheets as `Mode: massive-skim`.
+- **Capped Sampling**: Unique formulas retain at most 200 sample addresses per formula, and hard-coded detection stores the first 400 findings per sheet.
+- **Hard-Coded Detection**: Inline literal scanning (numbers, strings, arrays) runs during streaming without secondary passes.
+- **Analysis Metadata**: Worksheet results include `analysisMode` and optional `fallbackReason` so downstream consumers know which path executed.
 
 ## Development
 
@@ -125,10 +126,16 @@ MRT-Tool/
 - `npm run dev-server`: Start development server with hot reload
 - `npm run build`: Build for production
 - `npm run build:dev`: Build for development
-- `npm start`: Start Office debugging
-- `npm run sideload`: Sideload add-in to Excel
+- `npm start`: Start Office debugging (launches dev-server, sideloads Excel, and opens DevTools)
+- `npm run sideload`: Sideload add-in to Excel using the latest production build
 - `npm run unload`: Remove add-in from Excel
 - `npm run validate`: Validate manifest file
+
+### Recommended Desktop Workflow
+
+1. Run `npm start` for debugging: this launches the HTTPS dev server, sideloads the add-in, and opens Edge DevTools for the task pane WebView.
+2. If you prefer the production bundle, run `npm run build` followed by `npm run sideload` (ensure no dev-server is running). Remove stale XLAM add-ins from Excel Options if Excel complains about missing files.
+3. To stop debugging, run `npm run stop`.
 
 ### Contributing
 
@@ -166,4 +173,4 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Model Review Tool** - Professional Excel model analysis for enterprise environments. 
+**kCERT** - Professional Excel model analysis for enterprise environments. 

@@ -45,6 +45,7 @@ module.exports = (env, argv) => {
       new CopyWebpackPlugin({
         patterns: [
           { from: 'assets', to: 'assets' },
+          { from: 'KPMG_blue_logo.svg.png', to: 'assets/KPMG_blue_logo.svg.png' },
           { from: 'manifest.xml', to: 'manifest.xml' }
         ]
       })

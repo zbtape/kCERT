@@ -1,6 +1,6 @@
 This is the necessary background context and information about what we are trying to build and what it accomplishes and will be used for. 
 
-We are creating a Model Review Toole (MRT). This tool will be used for us and our client's.
+We are creating kCERT (KPMG Comprehensive Excel Review Tool). This tool will be used for us and our clients.
 
 This tool will be an Excel plug in. The purpose of it is to review an Excel based model.
 

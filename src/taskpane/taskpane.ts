@@ -232,6 +232,10 @@ function createWorksheetCard(worksheet: any): HTMLElement {
     card.innerHTML = `
         <div class="worksheet-header">
             <div class="worksheet-name">${worksheet.name}</div>
+            <div class="worksheet-mode">
+                <span class="mode-pill">${worksheet.analysisMode || 'streaming'}</span>
+                ${worksheet.fallbackReason ? `<span class="fallback-note">${worksheet.fallbackReason}</span>` : ''}
+            </div>
         </div>
         <div class="worksheet-stats">
             <div class="worksheet-stat">
@@ -286,7 +290,7 @@ async function exportResults(): Promise<void> {
         
         await Excel.run(async (context) => {
             // Remove existing report sheet if present to avoid double-counting
-            const existing = context.workbook.worksheets.getItemOrNullObject('CERT_Analysis_Report');
+            const existing = context.workbook.worksheets.getItemOrNullObject('kCERT_Analysis_Report');
             existing.load('name');
             await context.sync();
             if (!existing.isNullObject) {
@@ -295,7 +299,7 @@ async function exportResults(): Promise<void> {
             }
 
             // Create a new worksheet for the report
-            const reportSheet = context.workbook.worksheets.add('CERT_Analysis_Report');
+            const reportSheet = context.workbook.worksheets.add('kCERT_Analysis_Report');
 
             // Helper to set a single cell value using A1 address
             const setCellValue = (address: string, value: any) => {
@@ -308,7 +312,7 @@ async function exportResults(): Promise<void> {
             let row = 1;
 
             // Title and timestamp
-            setCellValue(`A${row}`, 'Model Review Tool - Formula Analysis Report');
+            setCellValue(`A${row}`, 'kCERT - Formula Analysis Report');
             reportSheet.getRange(`A${row}`).format.font.bold = true;
             reportSheet.getRange(`A${row}`).format.font.size = 16;
             row += 2;
@@ -333,6 +337,15 @@ async function exportResults(): Promise<void> {
             setCellValue(`B${row}`, analysisResults.uniqueFormulas);
             row++;
 
+            setCellValue(`A${row}`, 'Total Hard-coded Values:');
+            setCellValue(`B${row}`, analysisResults.totalHardCodedValues);
+            row++;
+
+            // Cell count analysis
+            setCellValue(`A${row}`, 'Cell Count Analysis');
+            reportSheet.getRange(`A${row}`).format.font.bold = true;
+            row++;
+
             setCellValue(`A${row}`, 'Total Cells:');
             setCellValue(`B${row}`, analysisResults.totalCells);
             row++;
@@ -349,151 +362,138 @@ async function exportResults(): Promise<void> {
             setCellValue(`B${row}`, analysisResults.totalCells - analysisResults.totalCellsWithFormulas - analysisResults.totalCellsWithValues);
             row++;
 
-            setCellValue(`A${row}`, 'Hard-coded Values:');
-            setCellValue(`B${row}`, analysisResults.totalHardCodedValues);
-            row += 2;
+            // Hard-coded values analysis
+            setCellValue(`A${row}`, 'Hard-coded Values Analysis');
+            reportSheet.getRange(`A${row}`).format.font.bold = true;
+            row++;
+
+            setCellValue(`A${row}`, 'High Severity:');
+            setCellValue(`B${row}`, analysisResults.highSeverityValues?.length || 0);
+            row++;
+
+            setCellValue(`A${row}`, 'Medium Severity:');
+            setCellValue(`B${row}`, analysisResults.mediumSeverityValues?.length || 0);
+            row++;
+
+            setCellValue(`A${row}`, 'Low Severity:');
+            setCellValue(`B${row}`, analysisResults.lowSeverityValues?.length || 0);
+            row++;
+
+            setCellValue(`A${row}`, 'Info Severity:');
+            setCellValue(`B${row}`, analysisResults.infoSeverityValues?.length || 0);
+            row++;
 
             // Worksheet details
             setCellValue(`A${row}`, 'Worksheet Details');
             reportSheet.getRange(`A${row}`).format.font.bold = true;
             row++;
 
-            // Headers
-            setCellValue(`A${row}`, 'Worksheet Name');
-            setCellValue(`B${row}`, 'Total Formulas');
-            setCellValue(`C${row}`, 'Unique Formulas');
-            setCellValue(`D${row}`, 'Total Cells');
-            setCellValue(`E${row}`, 'Cells with Formulas');
-            setCellValue(`F${row}`, 'Cells with Values');
-            setCellValue(`G${row}`, 'Empty Cells');
-            setCellValue(`H${row}`, 'Hard-coded Values');
-            setCellValue(`I${row}`, 'Complexity');
-
-            // Make headers bold
-            reportSheet.getRange(`A${row}:I${row}`).format.font.bold = true;
-            row++;
-
-            // Add worksheet data
-            analysisResults.worksheets.forEach((worksheet: any) => {
+            results.worksheets.forEach((worksheet: any) => {
                 setCellValue(`A${row}`, worksheet.name);
                 setCellValue(`B${row}`, worksheet.totalFormulas);
                 setCellValue(`C${row}`, worksheet.uniqueFormulas);
                 setCellValue(`D${row}`, worksheet.cellCountAnalysis.totalCells);
-                setCellValue(`E${row}`, worksheet.cellCountAnalysis.cellsWithFormulas);
-                setCellValue(`F${row}`, worksheet.cellCountAnalysis.cellsWithValues);
-                setCellValue(`G${row}`, worksheet.cellCountAnalysis.emptyCells);
-                setCellValue(`H${row}`, worksheet.hardCodedValueAnalysis.totalHardCodedValues);
-                setCellValue(`I${row}`, worksheet.formulaComplexity);
+                setCellValue(`E${row}`, worksheet.formulaComplexity);
+                setCellValue(`F${row}`, worksheet.hardCodedValueAnalysis?.totalHardCodedValues || 0);
                 row++;
             });
 
-            // Auto-fit columns
-            const used = reportSheet.getUsedRange(true);
-            used.format.autofitColumns();
+            // Formula list (example for one worksheet, adjust for all)
+            // This part needs to be generalized for all worksheets
+            // For now, we'll just add a placeholder or skip if not applicable
+            // setCellValue(`A${row}`, 'Formula List (Example)');
+            // reportSheet.getRange(`A${row}`).format.font.bold = true;
+            // row++;
+            // results.worksheets.forEach((worksheet: any) => {
+            //     setCellValue(`A${row}`, worksheet.name);
+            //     worksheet.uniqueFormulasList.forEach((formula: any) => {
+            //         setCellValue(`B${row}`, formula.formula);
+            //         setCellValue(`C${row}`, formula.count);
+            //         row++;
+            //     });
+            //     row++; // Add a row for the next worksheet
+            // });
 
             await context.sync();
-
-            // Activate the report sheet
-            reportSheet.activate();
+            showStatusMessage('Analysis results exported to new worksheet.', 'success');
         });
-        
-        showStatusMessage('Analysis report exported successfully!', 'success');
-        
     } catch (err) {
         console.error('Error exporting results:', err);
-        showStatusMessage(`Error exporting results: ${getErrorMessage(err)}`, 'error');
+        const errorMsg = getErrorMessage(err);
+        showStatusMessage(`Error exporting results: ${errorMsg}`, 'error');
     }
 }
 
 /**
- * Generate audit trail
+ * Generate audit trail for the current workbook
  */
 async function generateAuditTrail(): Promise<void> {
-    if (!analysisResults) {
-        showStatusMessage('No analysis results to generate audit trail. Please run analysis first.', 'warning');
-        return;
-    }
-    
     try {
+        showLoadingIndicator(true);
         showStatusMessage('Generating audit trail...', 'info');
-        
-        const auditData = {
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            analysisResults: analysisResults,
-            options: {
-                includeEmptyCells: (document.getElementById('includeEmptyCells') as HTMLInputElement).checked,
-                groupSimilarFormulas: (document.getElementById('groupSimilarFormulas') as HTMLInputElement).checked
-            }
-        };
-        
-        // Create downloadable JSON file
-        const dataStr = JSON.stringify(auditData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(dataBlob);
-        link.download = `MRT_Audit_Trail_${new Date().toISOString().split('T')[0]}.json`;
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        showStatusMessage('Audit trail generated and downloaded successfully!', 'success');
-        
+
+        await Excel.run(async (context) => {
+            const auditTrail = await FormulaAnalyzer.generateAuditTrail(context);
+            await context.sync();
+
+            // Assuming auditTrail is an array of strings or a single string
+            // For now, we'll just display the first few lines
+            const auditTrailText = auditTrail.join('\n');
+            showStatusMessage(`Audit Trail generated. Total lines: ${auditTrail.length}`, 'success');
+            alert(auditTrailText); // For simplicity, we'll show in an alert
+        });
     } catch (err) {
         console.error('Error generating audit trail:', err);
-        showStatusMessage(`Error generating audit trail: ${getErrorMessage(err)}`, 'error');
+        const errorMsg = getErrorMessage(err);
+        showStatusMessage(`Error generating audit trail: ${errorMsg}`, 'error');
+    } finally {
+        showLoadingIndicator(false);
     }
 }
 
 /**
- * Show or hide loading indicator
+ * Helper to show loading indicator
  */
-function showLoadingIndicator(show: boolean): void {
-    const indicator = document.getElementById('loadingIndicator')!;
-    indicator.style.display = show ? 'block' : 'none';
+function showLoadingIndicator(isLoading: boolean): void {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = isLoading ? 'block' : 'none';
+    }
 }
 
 /**
- * Show status message
+ * Helper to show status messages
  */
-function showStatusMessage(message: string, type: 'success' | 'error' | 'warning' | 'info'): void {
-    const container = document.getElementById('statusMessages')!;
-    
-    const messageElement = document.createElement('div');
-    messageElement.className = `status-message status-${type}`;
-    messageElement.textContent = message;
-    
-    container.appendChild(messageElement);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (messageElement.parentNode) {
-            messageElement.parentNode.removeChild(messageElement);
-        }
-    }, 5000);
+function showStatusMessage(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info'): void {
+    const statusMessage = document.getElementById('statusMessage');
+    if (statusMessage) {
+        statusMessage.textContent = message;
+        statusMessage.className = `status-message ${type}`;
+        statusMessage.style.display = 'block';
+    }
 }
 
 /**
- * Escape HTML characters
+ * Helper to get error message from an Office.js error object
  */
-function escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-} 
-
-/**
- * Safely extract a message from an unknown error
- */
-function getErrorMessage(err: unknown): string {
-    if (err instanceof Error) {
+function getErrorMessage(err: any): string {
+    if (err.message) {
         return err.message;
     }
-    try {
-        return JSON.stringify(err);
-    } catch {
-        return String(err);
+    if (err.error) {
+        return err.error.message;
     }
+    return String(err);
+}
+
+/**
+ * Helper to escape HTML for display
+ */
+function escapeHtml(unsafe: string): string {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }

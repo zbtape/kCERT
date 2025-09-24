@@ -9,7 +9,7 @@
   <ProviderName>Your Company</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   
-  <DisplayName DefaultValue="Comprehensive Excel Review Tool (CERT)"/>
+  <DisplayName DefaultValue="kCERT"/>
   <Description DefaultValue="Professional Excel add-in for formula analysis and model review with audit trail capabilities"/>
   <IconUrl DefaultValue="http://localhost:8080/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="http://localhost:8080/assets/icon-64.png"/>
@@ -86,13 +86,13 @@
         <bt:Url id="Taskpane.Url" DefaultValue="http://localhost:8080/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="Comprehensive Excel Review Tool"/>
-        <bt:String id="CommandsGroup.Label" DefaultValue="CERT"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Formula Analysis"/>
+        <bt:String id="GetStarted.Title" DefaultValue="kCERT"/>
+        <bt:String id="CommandsGroup.Label" DefaultValue="kCERT"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Open kCERT"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Professional tool for Excel model review and formula analysis"/>
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Analyze formulas in your workbook for review and audit purposes"/>
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Open the KPMG Comprehensive Excel Review Tool"/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
