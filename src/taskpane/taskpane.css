@@ -122,6 +122,24 @@ button#refreshMapSheets {
     flex-direction: column;
 }
 
+.map-selection-actions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.map-mini-button {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 12px;
+    background: #f3f2f1;
+    color: #323130;
+}
+
+.map-mini-button .ms-Button-label {
+    font-size: 12px;
+}
+
 .map-selection-label {
     font-weight: 600;
     margin-bottom: 6px;

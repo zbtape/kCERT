@@ -8,6 +8,8 @@ Office.onReady((info) => {
         document.getElementById('analyzeFormulas')?.addEventListener('click', analyzeFormulas);
         document.getElementById('generateMaps')?.addEventListener('click', generateMaps);
         document.getElementById('refreshMapSheets')?.addEventListener('click', refreshMapSheetList);
+        document.getElementById('selectAllMapSheets')?.addEventListener('click', () => toggleAllMapSheets(true));
+        document.getElementById('clearAllMapSheets')?.addEventListener('click', () => toggleAllMapSheets(false));
         document.getElementById('exportResults')?.addEventListener('click', exportResults);
         document.getElementById('generateAuditTrail')?.addEventListener('click', generateAuditTrail);
         
@@ -482,6 +484,17 @@ function getSelectedMapSheets(): string[] {
         }
     });
     return selected;
+}
+
+function toggleAllMapSheets(shouldSelect: boolean): void {
+    const listContainer = document.getElementById('mapSheetChecklist');
+    if (!listContainer) {
+        return;
+    }
+
+    listContainer.querySelectorAll('input[type="checkbox"]').forEach(box => {
+        (box as HTMLInputElement).checked = shouldSelect;
+    });
 }
 
 async function generateMaps(): Promise<void> {
