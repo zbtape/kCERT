@@ -11,7 +11,8 @@
     "stop": "office-addin-debugging stop manifest.xml",
     "validate": "office-addin-manifest validate manifest.xml",
     "sideload": "office-addin-dev-settings sideload manifest.xml",
-    "unload": "office-addin-dev-settings remove manifest.xml"
+    "unload": "office-addin-dev-settings remove manifest.xml",
+    "validate:hardcodes": "ts-node ./scripts/validate-hardcodes.ts"
   },
   "keywords": [
     "Excel",
@@ -24,6 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "@types/office-js": "^1.0.374",
+    "excel-formula-tokenizer": "~2.0.0",
     "office-ui-fabric-js": "^1.5.0"
   },
   "devDependencies": {

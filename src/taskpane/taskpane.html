@@ -27,198 +27,196 @@
         </header>
         
         <main class="ms-welcome__main">
-            <!-- Analysis Controls -->
-            <section class="ms-welcome__features">
-                <div class="ms-Grid">
-                    <div class="ms-Grid-row">
-                        <div class="ms-Grid-col ms-sm12">
-                            <div class="ms-TextField">
-                                <label class="ms-Label">Analysis Options</label>
-                                <div class="analysis-options">
-                                    <div class="checkbox-container">
-                                        <input type="checkbox" id="includeEmptyCells" checked>
-                                        <label for="includeEmptyCells">Include empty cells in analysis</label>
+            <section class="analysis-shell">
+                <div class="analysis-tabs" role="tablist">
+                    <button class="analysis-tab" id="analysisTab_summary" data-target="summaryView" aria-selected="true" role="tab">Summary</button>
+                    <button class="analysis-tab" id="analysisTab_listing" data-target="listingView" aria-selected="false" role="tab">Unique Formula Listing</button>
+                    <button class="analysis-tab" id="analysisTab_maps" data-target="mapsView" aria-selected="false" role="tab">Maps</button>
+                    <button class="analysis-tab" id="analysisTab_colour" data-target="colourView" aria-selected="false" role="tab">Colour Unique / Inputs</button>
+                </div>
+                <div class="analysis-toolbar" id="analysisToolbar">
+                    <div class="toolbar-section" id="scopeControl">
+                        <label for="analysisScope">Scope</label>
+                        <select id="analysisScope">
+                            <option value="workbook" selected>Entire workbook</option>
+                            <option value="sheet">Specific sheets…</option>
+                        </select>
+                        <div id="sheetScopePicker" class="sheet-scope-picker" hidden>
+                            <div id="sheetScopeList" class="sheet-scope-list"></div>
+                        </div>
+                    </div>
+                    <div class="toolbar-section" id="summaryToolbar" data-view="summaryView">
+                        <label for="minutesPerFormula">Minutes / formula</label>
+                        <input type="number" id="minutesPerFormula" min="0.1" step="0.1" value="2">
+                        <span class="toolbar-note">Adjust estimate based on reviewer skill & model complexity.</span>
+                    </div>
+                    <div class="toolbar-section" id="listingToolbar" data-view="listingView" hidden>
+                        <label class="toolbar-checkbox"><input type="checkbox" id="listingReviewedFilter"> Reviewed only</label>
+                        <input type="search" id="listingSearch" placeholder="Search formulas or UFIs">
+                        <button class="ms-Button toolbar-button" id="exportListing" type="button"><span class="ms-Button-label">Export UFL to sheet</span></button>
+                    </div>
+                    <div class="toolbar-section" id="mapsToolbar" data-view="mapsView" hidden>
+                        <button class="ms-Button toolbar-button" id="toggleMapLegend" type="button"><span class="ms-Button-label">Legend</span></button>
+                        <button class="ms-Button toolbar-button" id="mapsExport" type="button"><span class="ms-Button-label">Export map index</span></button>
+                    </div>
+                    <div class="toolbar-section" id="colourToolbar" data-view="colourView" hidden>
+                        <button class="ms-Button toolbar-button" id="applyColourUnique" type="button"><span class="ms-Button-label">Apply Colours</span></button>
+                        <button class="ms-Button toolbar-button" id="removeModelColours" type="button"><span class="ms-Button-label">Reset Colours</span></button>
+                    </div>
+                </div>
+
+                <div id="summaryView" class="analysis-view" role="tabpanel" aria-labelledby="analysisTab_summary">
+                    <section class="ms-welcome__features">
+                        <div class="ms-Grid">
+                            <div class="ms-Grid-row">
+                                <div class="ms-Grid-col ms-sm12">
+                                    <div class="ms-TextField">
+                                        <label class="ms-Label">Analysis Options</label>
+                                        <div class="analysis-options">
+                                            <div class="checkbox-container">
+                                                <input type="checkbox" id="includeEmptyCells" checked>
+                                                <label for="includeEmptyCells">Include empty cells in analysis</label>
+                                            </div>
+                                            <div class="checkbox-container">
+                                                <input type="checkbox" id="groupSimilarFormulas" checked>
+                                                <label for="groupSimilarFormulas">Group similar formulas</label>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="checkbox-container">
-                                        <input type="checkbox" id="groupSimilarFormulas" checked>
-                                        <label for="groupSimilarFormulas">Group similar formulas</label>
-                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+
+                        <div class="ms-Grid">
+                            <div class="ms-Grid-row">
+                                <div class="ms-Grid-col ms-sm12">
+                                    <button id="analyzeFormulas" class="ms-Button ms-Button--primary">
+                                        <span class="ms-Button-label">Analyze Workbook Formulas</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="summaryOverview" class="summary-overview" hidden>
+                        <h3 class="section-title">Summary Budget</h3>
+                        <p class="section-help">Use this overview to gauge the estimated time required for review. Adjust the minutes-per-formula control above to reflect reviewer experience and model complexity.</p>
+                        <div class="summary-budget-grid">
+                            <div class="summary-budget-card">
+                                <span class="summary-budget-number" id="summaryUniqueCount">0</span>
+                                <span class="summary-budget-label">Unique formulas</span>
+                            </div>
+                            <div class="summary-budget-card">
+                                <span class="summary-budget-number" id="summaryEstimatedMinutes">0</span>
+                                <span class="summary-budget-label">Estimated minutes</span>
+                            </div>
+                            <div class="summary-budget-card">
+                                <span class="summary-budget-number" id="summaryEstimatedHours">0</span>
+                                <span class="summary-budget-label">Estimated hours</span>
+                            </div>
+                            <div class="summary-budget-card">
+                                <span class="summary-budget-number" id="summaryWorksheetsScanned">0</span>
+                                <span class="summary-budget-label">Worksheets analysed</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="resultsSection" class="results-section" style="display: none;">
+                        <h3 class="ms-fontSize-l ms-fontWeight-semibold">Analysis Results</h3>
+                        <!-- existing content -->
+                    </section>
                 </div>
-                
-                <div class="ms-Grid">
-                    <div class="ms-Grid-row">
-                        <div class="ms-Grid-col ms-sm12">
-                            <button id="analyzeFormulas" class="ms-Button ms-Button--primary">
-                                <span class="ms-Button-label">Analyze Workbook Formulas</span>
+
+                <div id="listingView" class="analysis-view" role="tabpanel" aria-labelledby="analysisTab_listing" hidden>
+                    <section class="listing-header">
+                        <h3 class="section-title">Unique Formula Listing (UFL)</h3>
+                        <p class="section-help">Review each unique formula, prioritise by Formula Score (F-Score), and capture FIN references directly within the table.</p>
+                    </section>
+                    <section class="listing-table-shell">
+                        <div class="listing-scroll">
+                            <table id="uniqueFormulaTable">
+                                <thead>
+                                    <tr>
+                                        <th>UFI</th>
+                                        <th>FIN</th>
+                                        <th>Sheet</th>
+                                        <th>Formula (normalized)</th>
+                                        <th>Count</th>
+                                        <th>F-Score</th>
+                                        <th>Complexity</th>
+                                        <th>Status</th>
+                                        <th>Priority</th>
+                                        <th>Comment</th>
+                                        <th>Client Response</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="uniqueFormulaTableBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="mapsView" class="analysis-view" role="tabpanel" aria-labelledby="analysisTab_maps" hidden>
+                    <!-- existing map controls moved here -->
+                    <div class="map-controls">
+                        <div class="map-actions">
+                            <button id="generateMaps" class="ms-Button">
+                                <span class="ms-Button-label">Generate Worksheet Maps</span>
+                            </button>
+                            <button id="refreshMapSheets" class="ms-Button map-refresh-button" type="button">
+                                <span class="ms-Button-label">Refresh List</span>
                             </button>
                         </div>
-                    </div>
-                </div>
-
-                <div class="map-controls">
-                    <div class="map-actions">
-                        <button id="generateMaps" class="ms-Button">
-                            <span class="ms-Button-label">Generate Worksheet Maps</span>
-                        </button>
-                        <button id="refreshMapSheets" class="ms-Button map-refresh-button" type="button">
-                            <span class="ms-Button-label">Refresh List</span>
-                        </button>
-                    </div>
-                    <div class="map-selection">
-                        <label class="map-selection-label">Select worksheets to include</label>
-                        <div class="map-selection-actions">
-                            <button id="selectAllMapSheets" class="ms-Button map-mini-button" type="button">
-                                <span class="ms-Button-label">Select All</span>
-                            </button>
-                            <button id="clearAllMapSheets" class="ms-Button map-mini-button" type="button">
-                                <span class="ms-Button-label">Deselect All</span>
-                            </button>
+                        <div class="map-selection">
+                            <label class="map-selection-label">Select worksheets to include</label>
+                            <div class="map-selection-actions">
+                                <button id="selectAllMapSheets" class="ms-Button map-mini-button" type="button">
+                                    <span class="ms-Button-label">Select All</span>
+                                </button>
+                                <button id="clearAllMapSheets" class="ms-Button map-mini-button" type="button">
+                                    <span class="ms-Button-label">Deselect All</span>
+                                </button>
+                            </div>
+                            <div id="mapSheetChecklist" class="map-sheet-list">
+                                <div class="map-sheet-placeholder">Loading worksheets...</div>
+                            </div>
                         </div>
-                        <div id="mapSheetChecklist" class="map-sheet-list">
-                            <div class="map-sheet-placeholder">Loading worksheets...</div>
-                        </div>
-                    </div>
-                    <div id="mapRunSummary" class="map-run-summary" style="display: none;"></div>
-                    <div class="map-legend" id="mapLegendPanel">
-                        <h5>Worksheet Map Legend</h5>
-                        <ul>
-                            <li><span class="map-symbol map-symbol-f">F</span> Unique formula</li>
-                            <li><span class="map-symbol map-symbol-left">&lt;</span> Copy from the left</li>
-                            <li><span class="map-symbol map-symbol-up">^</span> Copy from above</li>
-                            <li><span class="map-symbol map-symbol-both">+</span> Copy from both left and above</li>
-                            <li><span class="map-symbol map-symbol-label">L</span> Label / descriptive text</li>
-                            <li><span class="map-symbol map-symbol-input">N</span> Numeric input</li>
-                            <li><span class="map-symbol map-symbol-array">A</span> Array formula spill</li>
-                        </ul>
-                        <p class="map-legend-note">Maps highlight copy direction breaks and blank cells within copy runs in the task pane summary after generation.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Results Section -->
-            <section id="resultsSection" class="results-section" style="display: none;">
-                <h3 class="ms-fontSize-l ms-fontWeight-semibold">Analysis Results</h3>
-
-                <!-- Workbook Overview -->
-                <h4 class="section-title">Workbook Overview</h4>
-                <p class="section-help">High-level statistics for the entire workbook. Use this to gauge overall scale, duplication, and potential risk hot-spots before diving into individual sheets.</p>
-
-                <!-- Summary Card -->
-                <div id="summaryCard" class="summary-card ms-bgColor-neutralLighter">
-                    <div class="ms-Grid">
-                        <div class="ms-Grid-row">
-                            <div class="ms-Grid-col ms-sm3">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="totalWorksheets">0</span>
-                                    <span class="stat-label">Worksheets</span>
-                                </div>
-                            </div>
-                            <div class="ms-Grid-col ms-sm3">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="totalFormulas">0</span>
-                                    <span class="stat-label">Total Formulas</span>
-                                </div>
-                            </div>
-                            <div class="ms-Grid-col ms-sm3">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="uniqueFormulas">0</span>
-                                    <span class="stat-label">Unique Formulas</span>
-                                </div>
-                            </div>
-                            <div class="ms-Grid-col ms-sm3">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="totalHardCodedValues">0</span>
-                                    <span class="stat-label">Hard-coded Values</span>
-                                </div>
-                            </div>
+                        <div id="mapRunSummary" class="map-run-summary" style="display: none;"></div>
+                        <div class="map-legend" id="mapLegendPanel">
+                            <h5>Worksheet Map Legend</h5>
+                            <ul>
+                                <li><span class="map-symbol map-symbol-f">F</span> Unique formula</li>
+                                <li><span class="map-symbol map-symbol-left">&lt;</span> Copy from the left</li>
+                                <li><span class="map-symbol map-symbol-up">^</span> Copy from above</li>
+                                <li><span class="map-symbol map-symbol-both">+</span> Copy from both left and above</li>
+                                <li><span class="map-symbol map-symbol-label">L</span> Label / descriptive text</li>
+                                <li><span class="map-symbol map-symbol-input">N</span> Numeric input</li>
+                                <li><span class="map-symbol map-symbol-array">A</span> Array formula spill</li>
+                            </ul>
+                            <p class="map-legend-note">Maps highlight copy direction breaks and blank cells within copy runs in the task pane summary after generation.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Cell Count Analysis -->
-                <div id="cellCountAnalysis" class="analysis-section">
-                    <h4 class="ms-fontSize-m ms-fontWeight-semibold">Cell Count Analysis</h4>
-                    <p class="section-help">Breakdown of cells across the entire workbook. “Cells with Formulas” and “Cells with Values” may overlap on different sheets; “Empty Cells” is calculated as total minus formulas minus values.</p>
-                    <div class="ms-Grid">
-                        <div class="ms-Grid-row">
-                            <div class="ms-Grid-col ms-sm3">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="totalCells">0</span>
-                                    <span class="stat-label">Total Cells</span>
-                                </div>
-                            </div>
-                            <div class="ms-Grid-col ms-sm3">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="cellsWithFormulas">0</span>
-                                    <span class="stat-label">Cells with Formulas</span>
-                                </div>
-                            </div>
-                            <div class="ms-Grid-col ms-sm3">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="cellsWithValues">0</span>
-                                    <span class="stat-label">Cells with Values</span>
-                                </div>
-                            </div>
-                            <div class="ms-Grid-col ms-sm3">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="emptyCells">0</span>
-                                    <span class="stat-label">Empty Cells</span>
-                                </div>
-                            </div>
+                <div id="colourView" class="analysis-view" role="tabpanel" aria-labelledby="analysisTab_colour" hidden>
+                    <section class="colour-controls">
+                        <h3 class="section-title">Colour Unique Formulae and Inputs</h3>
+                        <p class="section-help">Apply purple for unique formulas and yellow for numeric inputs across the selected scope. Reset colours to strip model formatting before reapplying MRT colours.</p>
+                        <div class="colour-actions">
+                            <button class="ms-Button" id="colourApply" type="button"><span class="ms-Button-label">Colour Unique</span></button>
+                            <button class="ms-Button" id="colourReset" type="button"><span class="ms-Button-label">Remove Model Colours</span></button>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Hard-coded Values Analysis -->
-                <div id="hardCodedValuesAnalysis" class="analysis-section">
-                    <h4 class="ms-fontSize-m ms-fontWeight-semibold">Hard-coded Values Analysis</h4>
-                    <p class="section-help">Counts of likely hard-coded constants detected within formulas across the workbook. Severity reflects confidence: High (very likely an issue), Medium (possible), Low (informational). Review the list below for context and suggested fixes.</p>
-                    <div class="ms-Grid">
-                        <div class="ms-Grid-row">
-                            <div class="ms-Grid-col ms-sm4">
-                                <div class="stat-item high-confidence">
-                                    <span class="stat-number" id="highConfidenceValues">0</span>
-                                    <span class="stat-label">High Confidence</span>
-                                </div>
-                            </div>
-                            <div class="ms-Grid-col ms-sm4">
-                                <div class="stat-item medium-confidence">
-                                    <span class="stat-number" id="mediumConfidenceValues">0</span>
-                                    <span class="stat-label">Medium Confidence</span>
-                                </div>
-                            </div>
-                            <div class="ms-Grid-col ms-sm4">
-                                <div class="stat-item low-confidence">
-                                    <span class="stat-number" id="lowConfidenceValues">0</span>
-                                    <span class="stat-label">Low Confidence</span>
-                                </div>
-                            </div>
+                        <div class="colour-options">
+                            <label class="checkbox-container">
+                                <input type="checkbox" id="colourResetFills" checked>
+                                <span>Reset fills to "No Fill"</span>
+                            </label>
+                            <label class="checkbox-container">
+                                <input type="checkbox" id="colourResetFont" checked>
+                                <span>Reset font colour to "Automatic"</span>
+                            </label>
                         </div>
-                    </div>
-                    <div id="hardCodedValuesList" class="hard-coded-values-list">
-                        <!-- Dynamic content will be inserted here -->
-                    </div>
-                </div>
-
-                <!-- Worksheet Details -->
-                <h4 class="section-title" style="margin-top:28px;">Worksheet Analyses</h4>
-                <p class="section-help">Each card summarizes one worksheet: analysis mode, formula counts, complexity, total cells, and detected hard-codes. Unique formulas are displayed in normalized form (e.g., <code>&lt;REL&gt;</code> for relative references, <code>&lt;ABS&gt;</code> for absolute references, <code>&lt;RANGE&gt;</code> for ranges) to group structurally similar formulas.</p>
-                <div id="worksheetDetails" class="worksheet-details">
-                    <!-- Dynamic content will be inserted here -->
-                </div>
-
-                <!-- Export Options -->
-                <div class="export-options">
-                    <button id="exportResults" class="ms-Button">
-                        <span class="ms-Button-label">Export Analysis Report</span>
-                    </button>
-                    <button id="generateAuditTrail" class="ms-Button">
-                        <span class="ms-Button-label">Generate Audit Trail</span>
-                    </button>
+                    </section>
                 </div>
             </section>
 

@@ -1,5 +1,5 @@
 import './taskpane.css';
-import { FormulaAnalyzer } from '../shared/FormulaAnalyzer';
+import { FormulaAnalyzer, AnalysisResult, WorksheetAnalysisResult, FormulaInfo } from '../shared/FormulaAnalyzer';
 import { WorksheetMapGenerator, MapSymbol, MapCounts } from '../shared/WorksheetMapGenerator';
 
 // Wait for Office.js to load
@@ -12,6 +12,28 @@ Office.onReady((info) => {
         document.getElementById('clearAllMapSheets')?.addEventListener('click', () => toggleAllMapSheets(false));
         document.getElementById('exportResults')?.addEventListener('click', exportResults);
         document.getElementById('generateAuditTrail')?.addEventListener('click', generateAuditTrail);
+        document.getElementById('analysisScope')?.addEventListener('change', handleScopeChange);
+        document.getElementById('minutesPerFormula')?.addEventListener('change', handleMinutesPerFormulaChange);
+        document.getElementById('listingReviewedFilter')?.addEventListener('change', () => {
+            uniqueListingState.showReviewedOnly = (document.getElementById('listingReviewedFilter') as HTMLInputElement).checked;
+            if (analysisResults) {
+                renderUniqueFormulaListing(analysisResults);
+            }
+        });
+        document.getElementById('listingSearch')?.addEventListener('input', (ev) => {
+            uniqueListingState.searchTerm = (ev.target as HTMLInputElement).value.trim().toLowerCase();
+            if (analysisResults) {
+                renderUniqueFormulaListing(analysisResults);
+            }
+        });
+        document.getElementById('exportListing')?.addEventListener('click', exportUniqueFormulaListing);
+        document.getElementById('colourApply')?.addEventListener('click', () => applyColouring(false));
+        document.getElementById('colourReset')?.addEventListener('click', () => applyColouring(true));
+        ANALYSIS_VIEWS.forEach(viewId => {
+            const tab = document.getElementById(`analysisTab_${viewId.replace('View','')}`);
+            tab?.addEventListener('click', () => switchAnalysisView(viewId));
+        });
+        initializeScopePicker();
         
         // Components are now initialized
         refreshMapSheetList();
@@ -19,11 +41,38 @@ Office.onReady((info) => {
     }
 });
 
-let analysisResults: any = null;
+let analysisResults: AnalysisResult | null = null;
 let mapGenerator: WorksheetMapGenerator | null = null;
 let mapSheetCache: string[] = [];
+let minutesPerFormulaSetting = 2;
+let uniqueListingState: { showReviewedOnly: boolean; searchTerm: string } = { showReviewedOnly: false, searchTerm: '' };
+
+const ANALYSIS_VIEWS = ['summaryView', 'listingView', 'mapsView', 'colourView'] as const;
+type AnalysisViewId = typeof ANALYSIS_VIEWS[number];
+
+let activeView: AnalysisViewId = 'summaryView';
+let sheetScope: string[] = [];
 
 // Fabric UI components are no longer needed - using standard HTML checkboxes
+
+const ESCAPE_MAP: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+};
+
+function ensureCalloutContainer(): HTMLElement {
+    const container = document.getElementById('statusMessages') as HTMLElement | null;
+    if (container) {
+        return container;
+    }
+    const created = document.createElement('div');
+    created.id = 'statusMessages';
+    document.body.appendChild(created);
+    return created;
+}
 
 const formatNumber = (value: number | string | undefined | null): string => {
     if (value === undefined || value === null) {
@@ -46,7 +95,9 @@ async function analyzeFormulas(): Promise<void> {
         
         const options = {
             includeEmptyCells: (document.getElementById('includeEmptyCells') as HTMLInputElement).checked,
-            groupSimilarFormulas: (document.getElementById('groupSimilarFormulas') as HTMLInputElement).checked
+            groupSimilarFormulas: (document.getElementById('groupSimilarFormulas') as HTMLInputElement).checked,
+            targetSheets: sheetScope.length ? sheetScope : undefined,
+            minutesPerFormula: minutesPerFormulaSetting
         };
         
         await Excel.run(async (context) => {
@@ -66,6 +117,8 @@ async function analyzeFormulas(): Promise<void> {
             
             analysisResults = results;
             displayResults(results);
+            renderUniqueFormulaSummary(results);
+            renderUniqueFormulaListing(results);
             
             const totalCells = results.totalCells;
             if (totalCells > 100000) {
@@ -91,7 +144,7 @@ async function analyzeFormulas(): Promise<void> {
 /**
  * Display the analysis results in the UI
  */
-function displayResults(results: any): void {
+function displayResults(results: AnalysisResult): void {
     // Update summary statistics
     document.getElementById('totalWorksheets')!.textContent = formatNumber(results.totalWorksheets);
     document.getElementById('totalFormulas')!.textContent = formatNumber(results.totalFormulas);
@@ -133,7 +186,7 @@ function displayResults(results: any): void {
     const worksheetDetails = document.getElementById('worksheetDetails')!;
     worksheetDetails.innerHTML = '';
     
-    results.worksheets.forEach((worksheet: any) => {
+    results.worksheets.forEach((worksheet) => {
         const worksheetCard = createWorksheetCard(worksheet);
         worksheetDetails.appendChild(worksheetCard);
     });
@@ -145,7 +198,7 @@ function displayResults(results: any): void {
 /**
  * Display hard-coded values in the UI
  */
-function displayHardCodedValues(worksheets: any[]): void {
+function displayHardCodedValues(worksheets: WorksheetAnalysisResult[]): void {
     const hardCodedValuesList = document.getElementById('hardCodedValuesList')!;
     hardCodedValuesList.innerHTML = '';
     
@@ -706,12 +759,10 @@ function buildLegendRows(
  * Helper to show status messages
  */
 function showStatusMessage(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info'): void {
-    const statusMessage = document.getElementById('statusMessage');
-    if (statusMessage) {
-        statusMessage.textContent = message;
-        statusMessage.className = `status-message ${type}`;
-        statusMessage.style.display = 'block';
-    }
+    const statusMessage = ensureCalloutContainer();
+    statusMessage.textContent = message;
+    statusMessage.className = `status-message ${type}`;
+    statusMessage.style.display = 'block';
 }
 
 /**
@@ -730,13 +781,8 @@ function getErrorMessage(err: any): string {
 /**
  * Helper to escape HTML for display
  */
-function escapeHtml(unsafe: string): string {
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+function escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (ch) => ESCAPE_MAP[ch]);
 }
 
 async function refreshMapSheetList(): Promise<void> {
@@ -816,4 +862,336 @@ function renderMapRunSummary(summary: string[]): void {
             ${summary.map(entry => `<li>${escapeHtml(entry)}</li>`).join('')}
         </ul>
     `;
+}
+
+function renderUniqueFormulaSummary(results: AnalysisResult): void {
+    const overview = document.getElementById('summaryOverview');
+    if (!overview) {
+        return;
+    }
+    overview.hidden = false;
+    const ufCount = results.uniqueSummary.ufCount;
+    minutesPerFormulaSetting = results.uniqueSummary.minutesPerFormula ?? minutesPerFormulaSetting;
+    const estimatedMinutes = Math.round(ufCount * minutesPerFormulaSetting);
+    const estimatedHours = estimatedMinutes / 60;
+
+    document.getElementById('summaryUniqueCount')!.textContent = formatNumber(ufCount);
+    document.getElementById('summaryEstimatedMinutes')!.textContent = formatNumber(estimatedMinutes);
+    document.getElementById('summaryEstimatedHours')!.textContent = estimatedHours.toFixed(1);
+    document.getElementById('summaryWorksheetsScanned')!.textContent = formatNumber(results.totalWorksheets);
+    const minutesField = document.getElementById('minutesPerFormula') as HTMLInputElement | null;
+    if (minutesField) {
+        minutesField.value = String(minutesPerFormulaSetting);
+    }
+}
+
+function renderUniqueFormulaListing(results: AnalysisResult): void {
+    const tbody = document.getElementById('uniqueFormulaTableBody');
+    if (!tbody) {
+        return;
+    }
+    tbody.innerHTML = '';
+    const applyFilter = uniqueListingState.showReviewedOnly || uniqueListingState.searchTerm.length > 0;
+    const rows: HTMLTableRowElement[] = [];
+
+    results.worksheets.forEach((worksheet) => {
+        worksheet.uniqueFormulasList.forEach((formulaInfo, index) => {
+            const status = '';
+            if (uniqueListingState.showReviewedOnly && !status) {
+                return;
+            }
+            if (uniqueListingState.searchTerm) {
+                const search = uniqueListingState.searchTerm;
+                const haystack = `${formulaInfo.ufIndicator} ${formulaInfo.normalizedFormula} ${worksheet.name}`.toLowerCase();
+                if (!haystack.includes(search)) {
+                    return;
+                }
+            }
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${formulaInfo.ufIndicator}</td>
+                <td>${generateFinPlaceholder(index)}</td>
+                <td>${escapeHtml(worksheet.name)}</td>
+                <td class="formula-cell">${escapeHtml(formulaInfo.exampleFormula)}</td>
+                <td class="formula-cell">${escapeHtml(formulaInfo.normalizedFormula)}</td>
+                <td>${formatNumber(formulaInfo.count)}</td>
+                <td>${formatNumber(formulaInfo.fScore)}</td>
+                <td>${formulaInfo.complexity}</td>
+                <td contenteditable="true" data-field="status"></td>
+                <td contenteditable="true" data-field="priority"></td>
+                <td contenteditable="true" data-field="comment"></td>
+                <td contenteditable="true" data-field="clientResponse"></td>
+            `;
+            rows.push(row);
+        });
+    });
+
+    if (!rows.length && applyFilter) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `<td colspan="11" class="listing-empty">No formulas match current filters.</td>`;
+        tbody.appendChild(emptyRow);
+        return;
+    }
+
+    rows.sort((a, b) => {
+        const scoreA = Number(a.children[5].textContent || '0');
+        const scoreB = Number(b.children[5].textContent || '0');
+        return scoreB - scoreA;
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+function generateFinPlaceholder(index: number): string {
+    return `FIN-${(index + 1).toString().padStart(4, '0')}`;
+}
+
+function switchAnalysisView(target: AnalysisViewId): void {
+    if (activeView === target) {
+        return;
+    }
+    activeView = target;
+    ANALYSIS_VIEWS.forEach(viewId => {
+        const panel = document.getElementById(viewId);
+        const toolbar = document.querySelector(`[data-view="${viewId}"]`);
+        const tab = document.querySelector(`[data-target="${viewId}"]`);
+        if (!panel || !tab) {
+            return;
+        }
+        const isActive = viewId === target;
+        panel.toggleAttribute('hidden', !isActive);
+        (tab as HTMLElement).setAttribute('aria-selected', isActive ? 'true' : 'false');
+        if (toolbar instanceof HTMLElement) {
+            toolbar.hidden = !isActive;
+        }
+    });
+}
+
+function handleMinutesPerFormulaChange(): void {
+    const minutesField = document.getElementById('minutesPerFormula') as HTMLInputElement | null;
+    if (!minutesField) {
+        return;
+    }
+    const value = Number(minutesField.value);
+    if (!Number.isFinite(value) || value <= 0) {
+        minutesField.value = String(minutesPerFormulaSetting);
+        return;
+    }
+    minutesPerFormulaSetting = value;
+    if (analysisResults) {
+        renderUniqueFormulaSummary({
+            ...analysisResults,
+            uniqueSummary: {
+                ufCount: analysisResults.uniqueSummary.ufCount,
+                estimatedMinutes: analysisResults.uniqueSummary.ufCount * minutesPerFormulaSetting,
+                minutesPerFormula: minutesPerFormulaSetting
+            }
+        });
+    }
+}
+
+function handleScopeChange(): void {
+    const scopeSelect = document.getElementById('analysisScope') as HTMLSelectElement | null;
+    const picker = document.getElementById('sheetScopePicker') as HTMLElement | null;
+    if (!scopeSelect || !picker) {
+        return;
+    }
+    const value = scopeSelect.value;
+    if (value === 'sheet') {
+        picker.hidden = false;
+        populateScopePicker();
+    } else {
+        picker.hidden = true;
+        sheetScope = [];
+    }
+}
+
+function initializeScopePicker(): void {
+    const picker = document.getElementById('sheetScopePicker');
+    if (picker) {
+        picker.hidden = true;
+    }
+}
+
+async function populateScopePicker(): Promise<void> {
+    const list = document.getElementById('sheetScopeList');
+    if (!list) {
+        return;
+    }
+    list.innerHTML = '<div class="sheet-scope-placeholder">Loading worksheets...</div>';
+    try {
+        await Excel.run(async (context) => {
+            const worksheets = context.workbook.worksheets;
+            worksheets.load('items/name');
+            await context.sync();
+
+            const items = worksheets.items.filter(ws => !ws.name.endsWith('_maps') && ws.name !== 'kCERT_Analysis_Report');
+            const fragment = document.createDocumentFragment();
+            sheetScope = sheetScope.filter(name => items.some(ws => ws.name === name));
+            items.forEach(ws => {
+                const label = document.createElement('label');
+                label.className = 'sheet-scope-item';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.value = ws.name;
+                input.checked = sheetScope.includes(ws.name);
+                input.addEventListener('change', () => {
+                    if (input.checked) {
+                        if (!sheetScope.includes(ws.name)) {
+                            sheetScope.push(ws.name);
+                        }
+                    } else {
+                        sheetScope = sheetScope.filter(name => name !== ws.name);
+                    }
+                });
+                const span = document.createElement('span');
+                span.textContent = ws.name;
+                label.append(input, span);
+                fragment.appendChild(label);
+            });
+            list.innerHTML = '';
+            list.appendChild(fragment);
+        });
+    } catch (error) {
+        console.error('Failed to populate scope picker', error);
+        list.innerHTML = '<div class="sheet-scope-placeholder">Unable to load worksheets.</div>';
+    }
+}
+
+async function exportUniqueFormulaListing(): Promise<void> {
+    if (!analysisResults) {
+        showStatusMessage('No analysis results to export. Please run analysis first.', 'warning');
+        return;
+    }
+
+    try {
+        await Excel.run(async (context) => {
+            const reportSheetName = 'kCERT_UFL';
+            const existing = context.workbook.worksheets.getItemOrNullObject(reportSheetName);
+            existing.load('isNullObject');
+            await context.sync();
+            if (!existing.isNullObject) {
+                existing.delete();
+                await context.sync();
+            }
+
+            const sheet = context.workbook.worksheets.add(reportSheetName);
+            let row = 1;
+            sheet.getRange(`A${row}`).values = [['Unique Formula Listing']];
+            sheet.getRange(`A${row}`).format.font.bold = true;
+            row += 2;
+
+            sheet.getRange(`A${row}:K${row}`).values = TABLE_HEADER;
+            sheet.getRange(`A${row}:K${row}`).format.font.bold = true;
+            row++;
+
+            const firstDataRow = row;
+
+            analysisResults.worksheets.forEach(ws => {
+                ws.uniqueFormulasList.forEach((info, idx) => {
+                    sheet.getRange(`A${row}:K${row}`).values = [[
+                        info.ufIndicator,
+                        generateFinPlaceholder(idx),
+                        ws.name,
+                        info.exampleFormula,
+                        info.normalizedFormula,
+                        info.count,
+                        info.fScore,
+                        info.complexity,
+                        '',
+                        '',
+                        ''
+                    ]];
+                    row++;
+                });
+            });
+
+            const lastDataRow = row - 1;
+            if (lastDataRow >= firstDataRow) {
+                sheet.tables.add(`A${firstDataRow}:K${lastDataRow}`, true).name = 'UFLTable';
+            }
+            await context.sync();
+        });
+        showStatusMessage('Unique Formula Listing exported to worksheet "kCERT_UFL".', 'success');
+    } catch (error) {
+        console.error('Failed to export listing', error);
+        showStatusMessage(`Failed to export listing: ${getErrorMessage(error)}`, 'error');
+    }
+}
+
+async function applyColouring(resetOnly: boolean): Promise<void> {
+    const resetFills = (document.getElementById('colourResetFills') as HTMLInputElement)?.checked ?? false;
+    const resetFont = (document.getElementById('colourResetFont') as HTMLInputElement)?.checked ?? false;
+    const targetSheets = sheetScope.length ? [...sheetScope] : undefined;
+
+    try {
+        await Excel.run(async (context) => {
+            const workbook = context.workbook;
+            const sheets = workbook.worksheets;
+            sheets.load('items/name');
+            await context.sync();
+
+            const targets = sheets.items.filter(ws => {
+                if (ws.name === 'kCERT_Analysis_Report' || ws.name.endsWith('_maps')) {
+                    return false;
+                }
+                if (targetSheets) {
+                    return targetSheets.includes(ws.name);
+                }
+                return true;
+            });
+
+            for (const sheet of targets) {
+                const usedRange = sheet.getUsedRangeOrNullObject();
+                usedRange.load(['isNullObject', 'address']);
+                await context.sync();
+                if (usedRange.isNullObject) {
+                    continue;
+                }
+                if (resetOnly) {
+                    await resetColours(usedRange, resetFills, resetFont);
+                    continue;
+                }
+                if (resetFills || resetFont) {
+                    await resetColours(usedRange, resetFills, resetFont);
+                }
+                await colourUniqueAndInputs(usedRange);
+            }
+            await context.sync();
+        });
+        showStatusMessage(resetOnly ? 'Model colours removed.' : 'Unique and input colouring applied.', 'success');
+    } catch (error) {
+        console.error('Colouring failed', error);
+        showStatusMessage(`Colouring failed: ${getErrorMessage(error)}`, 'error');
+    }
+}
+
+async function resetColours(range: Excel.Range, resetFills: boolean, resetFont: boolean): Promise<void> {
+    if (resetFills) {
+        range.format.fill.clear();
+    }
+    if (resetFont) {
+        range.format.font.color = 'Automatic';
+    }
+}
+
+async function colourUniqueAndInputs(range: Excel.Range): Promise<void> {
+    range.load(['formulas', 'values']);
+    await range.context.sync();
+    const formulas = range.formulas as (string | null)[][];
+    const values = range.values as any[][];
+
+    for (let r = 0; r < formulas.length; r++) {
+        for (let c = 0; c < formulas[r].length; c++) {
+            const formula = formulas[r][c];
+            const value = values[r][c];
+            const cell = range.getCell(r, c);
+            if (typeof formula === 'string' && formula.startsWith('=')) {
+                cell.format.fill.color = '#7030A0';
+            } else if (typeof value === 'number') {
+                cell.format.fill.color = '#FFC000';
+            }
+        }
+    }
 }

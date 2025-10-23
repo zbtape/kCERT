@@ -6,16 +6,36 @@
  */
 
 import { getCellAddress, isEmpty, isFormula, normalizeFormula, twoDecimals } from './FormulaUtils';
+import { detectHardCodedLiterals, HardCodedLiteral } from './HardCodeDetector';
+import { computeFormulaComplexity, ComplexityBand, FormulaComplexityResult } from './FormulaComplexity';
 
 export interface AnalysisOptions {
     includeEmptyCells: boolean;
     groupSimilarFormulas: boolean;
+    targetSheets?: string[];
+    minutesPerFormula?: number;
 }
 
 export interface FormulaInfo {
     formula: string;
+    normalizedFormula: string;
+    exampleFormula: string;
     count: number;
     cells: string[];
+    ufIndicator: string;
+    fScore: number;
+    complexity: ComplexityBand;
+    complexityDetail: FormulaComplexityResult;
+    isArrayFormula: boolean;
+}
+
+interface AggregatedFormula {
+    normalizedFormula: string;
+    exampleFormula: string;
+    totalCount: number;
+    cells: string[];
+    isArrayFormula: boolean;
+    complexityDetail: FormulaComplexityResult;
 }
 
 export interface CellCountAnalysis {
@@ -59,6 +79,20 @@ export interface WorksheetAnalysisResult {
     hardCodedValueAnalysis: HardCodedValueAnalysis;
     analysisMode?: 'streaming' | 'massive-skim' | 'skipped';
     fallbackReason?: string;
+    uniqueFormulaSummary: UniqueFormulaSummary;
+}
+
+export interface UniqueFormulaSummary {
+    ufCount: number;
+    estimatedMinutes: number;
+    minutesPerFormula: number;
+    reviewedCount: number;
+}
+
+export interface WorkbookUniqueSummary {
+    ufCount: number;
+    estimatedMinutes: number;
+    minutesPerFormula: number;
 }
 
 export interface AnalysisResult {
@@ -71,6 +105,7 @@ export interface AnalysisResult {
     totalCellsWithFormulas: number;
     totalCellsWithValues: number;
     totalHardCodedValues: number;
+    uniqueSummary: WorkbookUniqueSummary;
 }
 
 export type ProgressReporter = (message: string) => void;
@@ -92,7 +127,18 @@ export class FormulaAnalyzer {
         await context.sync();
 
         const skipSheets = new Set(['kCERT_Analysis_Report']);
-        const targets = worksheets.items.filter(ws => !skipSheets.has(ws.name));
+        const targetFilter = options.targetSheets && options.targetSheets.length
+            ? new Set(options.targetSheets.map(name => name.toLowerCase()))
+            : null;
+        const targets = worksheets.items.filter(ws => {
+            if (skipSheets.has(ws.name)) {
+                return false;
+            }
+            if (targetFilter) {
+                return targetFilter.has(ws.name.toLowerCase());
+            }
+            return true;
+        });
 
         const worksheetResults: WorksheetAnalysisResult[] = [];
         let totalFormulas = 0;
@@ -101,6 +147,7 @@ export class FormulaAnalyzer {
         let totalCellsWithValues = 0;
         let totalHardCodes = 0;
         const uniqueSet = new Set<string>();
+        let totalUfs = 0;
 
         for (const ws of targets) {
             progress?.(`Starting worksheet "${ws.name}"`);
@@ -112,10 +159,18 @@ export class FormulaAnalyzer {
             totalCellsWithFormulas += result.cellCountAnalysis.cellsWithFormulas;
             totalCellsWithValues += result.cellCountAnalysis.cellsWithValues;
             totalHardCodes += result.hardCodedValueAnalysis.totalHardCodedValues;
+            totalUfs += result.uniqueFormulaSummary.ufCount;
             result.uniqueFormulasList.forEach(info => uniqueSet.add(info.formula));
 
             await new Promise(resolve => setTimeout(resolve, 0));
         }
+
+        const minutesPerFormula = options.minutesPerFormula ?? 2;
+        const uniqueSummary: WorkbookUniqueSummary = {
+            ufCount: totalUfs,
+            estimatedMinutes: totalUfs * minutesPerFormula,
+            minutesPerFormula
+        };
 
         return {
             totalWorksheets: worksheetResults.length,
@@ -126,7 +181,8 @@ export class FormulaAnalyzer {
             totalCells,
             totalCellsWithFormulas,
             totalCellsWithValues,
-            totalHardCodedValues: totalHardCodes
+            totalHardCodedValues: totalHardCodes,
+            uniqueSummary
         };
     }
 
@@ -154,10 +210,12 @@ export class FormulaAnalyzer {
         }
 
         const formulaMap = new Map<string, FormulaInfo>();
+        const normalizedMap = new Map<string, AggregatedFormula>();
         const hardCodes: HardCodedValue[] = [];
         let totalFormulas = 0;
         let cellsWithFormulas = 0;
         let cellsWithValues = 0;
+        let arrayFormulaCount = 0;
 
         for (let rowStart = 0; rowStart < usedRange.rowCount; rowStart += FormulaAnalyzer.ROW_BLOCK) {
             const rowHeight = Math.min(FormulaAnalyzer.ROW_BLOCK, usedRange.rowCount - rowStart);
@@ -182,26 +240,70 @@ export class FormulaAnalyzer {
                         const absCol = usedRange.columnIndex + colStart + c;
                         const address = getCellAddress(absRow, absCol);
 
+                        const isArrayFormula = typeof formula === 'string' && formula.startsWith('{=');
+
                         if (isFormula(formula)) {
                             cellsWithFormulas++;
                             totalFormulas++;
 
-                            const key = options.groupSimilarFormulas
-                                ? normalizeFormula(formula)
-                                : formula;
+                            const normalized = normalizeFormula(formula);
+                            const key = options.groupSimilarFormulas ? normalized : formula;
 
                             let info = formulaMap.get(key);
                             if (!info) {
-                                info = { formula: key, count: 0, cells: [] };
+                                const detail = computeFormulaComplexity(formula, isArrayFormula);
+                                info = {
+                                    formula,
+                                    normalizedFormula: normalized,
+                                    exampleFormula: formula,
+                                    count: 0,
+                                    cells: [],
+                                    ufIndicator: '',
+                                    fScore: this.computeFScore(detail, 0, isArrayFormula),
+                                    complexity: detail.band,
+                                    complexityDetail: detail,
+                                    isArrayFormula
+                                };
                                 formulaMap.set(key, info);
                             }
+
                             info.count++;
                             if (info.cells.length < FormulaAnalyzer.MAX_FORMULA_SAMPLE_CELLS) {
                                 info.cells.push(address);
                             }
+                            info.exampleFormula = formula;
+                            info.complexityDetail = computeFormulaComplexity(formula, isArrayFormula);
+                            info.complexity = info.complexityDetail.band;
+                            info.fScore = this.computeFScore(info.complexityDetail, info.count, isArrayFormula);
+
+                            if (options.groupSimilarFormulas) {
+                                let aggregate = normalizedMap.get(normalized);
+                                if (!aggregate) {
+                                    aggregate = {
+                                        normalizedFormula: normalized,
+                                        exampleFormula: formula,
+                                        totalCount: 0,
+                                        cells: [],
+                                        isArrayFormula,
+                                        complexityDetail: info.complexityDetail
+                                    };
+                                    normalizedMap.set(normalized, aggregate);
+                                }
+                                aggregate.totalCount++;
+                                if (aggregate.cells.length < FormulaAnalyzer.MAX_FORMULA_SAMPLE_CELLS) {
+                                    aggregate.cells.push(address);
+                                }
+                                aggregate.exampleFormula = formula;
+                                aggregate.isArrayFormula = isArrayFormula;
+                                aggregate.complexityDetail = info.complexityDetail;
+                            }
 
                             if (hardCodes.length < FormulaAnalyzer.MAX_HARDCODED_PER_SHEET) {
                                 hardCodes.push(...this.detectHardCodedValues(formula, address));
+                            }
+
+                            if (isArrayFormula) {
+                                arrayFormulaCount++;
                             }
                         } else if (!isEmpty(value)) {
                             cellsWithValues++;
@@ -212,13 +314,26 @@ export class FormulaAnalyzer {
         }
 
         const emptyCells = Math.max(totalCells - cellsWithFormulas - cellsWithValues, 0);
+        const formulaInfos = options.groupSimilarFormulas
+            ? Array.from(normalizedMap.values()).map((entry) => this.toFormulaInfo(entry))
+            : Array.from(formulaMap.values());
+        this.assignUniqueFormulaIndicators(formulaInfos);
+
+        const ufCount = formulaInfos.length;
+        const minutesPerFormula = options.minutesPerFormula ?? 2;
+        const summary: UniqueFormulaSummary = {
+            ufCount,
+            estimatedMinutes: ufCount * minutesPerFormula,
+            minutesPerFormula,
+            reviewedCount: 0
+        };
 
         return {
             name: worksheet.name,
             totalCells,
             totalFormulas,
-            uniqueFormulas: formulaMap.size,
-            uniqueFormulasList: Array.from(formulaMap.values()).sort((a, b) => b.count - a.count),
+            uniqueFormulas: formulaInfos.length,
+            uniqueFormulasList: formulaInfos.sort((a, b) => b.count - a.count),
             formulaComplexity: this.assessComplexity(totalFormulas, formulaMap),
             cellCountAnalysis: {
                 totalCells,
@@ -229,7 +344,8 @@ export class FormulaAnalyzer {
                 valuePercentage: twoDecimals(totalCells > 0 ? (cellsWithValues / totalCells) * 100 : 0)
             },
             hardCodedValueAnalysis: this.finaliseHardCodes(hardCodes),
-            analysisMode: 'streaming'
+            analysisMode: 'streaming',
+            uniqueFormulaSummary: summary
         };
     }
 
@@ -292,45 +408,74 @@ export class FormulaAnalyzer {
                 undocumentedParameters: []
             },
             analysisMode: 'massive-skim',
-            fallbackReason: 'massive_threshold'
+            fallbackReason: 'massive_threshold',
+            uniqueFormulaSummary: {
+                ufCount: 0,
+                estimatedMinutes: 0,
+                minutesPerFormula: 2,
+                reviewedCount: 0
+            }
         };
     }
 
     private detectHardCodedValues(formula: string, address: string): HardCodedValue[] {
-        const results: HardCodedValue[] = [];
         if (!isFormula(formula)) {
-            return results;
+            return [];
         }
 
-        const push = (value: string, severity: HardCodedValue['severity'], index: number) => {
-            results.push({
-                value,
-                severity,
-                context: this.snippet(formula, index, 60),
-                cellAddress: address,
-                rationale: this.rationaleForSeverity(severity, value),
-                suggestedFix: this.fixForSeverity(severity),
-                isRepeated: false,
-                repetitionCount: 0
-            });
-        };
+        const literals = detectHardCodedLiterals(formula);
+        return literals
+            .map(literal => {
+                const severity = this.mapLiteralSeverity(literal);
+                if (!severity) {
+                    return null;
+                }
+                const entry: HardCodedValue = {
+                    value: literal.display,
+                    severity,
+                    context: this.snippet(formula, literal.index, 80),
+                    cellAddress: address,
+                    rationale: literal.rationale ?? this.rationaleForSeverity(severity, literal.display),
+                    suggestedFix: literal.suggestedFix ?? this.fixForSeverity(severity),
+                    isRepeated: false,
+                    repetitionCount: 0
+                };
+                return entry;
+            })
+            .filter((entry): entry is HardCodedValue => entry !== null);
+    }
 
-        const numericPattern = /(?<![A-Z])(-?\d+(?:\.\d+)?)(?![A-Z0-9])/gi;
-        const stringPattern = /"([^"\r\n]*)"/g;
-        const arrayPattern = /\{([^}]+)\}/g;
-
-        let match: RegExpExecArray | null;
-        while ((match = numericPattern.exec(formula)) !== null) {
-            push(match[1], this.severityForNumber(match[1]), match.index);
+    private mapLiteralSeverity(literal: HardCodedLiteral): HardCodedValue['severity'] | null {
+        switch (literal.kind) {
+            case 'numeric':
+                return this.severityForNumber(literal.value);
+            case 'percentage':
+                if (literal.absoluteValue === undefined) return 'Info';
+                if (literal.absoluteValue >= 100) return 'High';
+                if (literal.absoluteValue >= 10) return 'Medium';
+                return 'Low';
+            case 'string':
+                if (literal.isFlag) return null;
+                if (literal.value.length >= 6) return 'Medium';
+                if (literal.value.length >= 3) return 'Low';
+                return 'Info';
+            case 'boolean':
+                return literal.isFlag ? null : 'Info';
+            case 'date':
+                return literal.isLikelyInput ? 'Medium' : 'Low';
+            case 'time':
+                return literal.isLikelyInput ? 'Medium' : 'Low';
+            case 'array':
+                return literal.containsMixedTypes ? 'High' : 'Medium';
+            case 'named-literal':
+                return literal.isRecognizedConstant ? null : 'Low';
+            case 'external':
+                return literal.isLinkedWorkbook ? 'Info' : 'Low';
+            case 'hexadecimal':
+                return 'High';
+            default:
+                return 'Info';
         }
-        while ((match = stringPattern.exec(formula)) !== null) {
-            push(`"${match[1]}"`, match[1].length >= 6 ? 'Medium' : match[1].length >= 3 ? 'Low' : 'Info', match.index);
-        }
-        while ((match = arrayPattern.exec(formula)) !== null) {
-            push(`{${match[1]}}`, 'High', match.index);
-        }
-
-        return results;
     }
 
     private finaliseHardCodes(values: HardCodedValue[]): HardCodedValueAnalysis {
@@ -375,6 +520,18 @@ export class FormulaAnalyzer {
             repeatedValues: repeated,
             undocumentedParameters: values.filter(v => (v.severity === 'High' || v.severity === 'Medium') && v.isRepeated)
         };
+    }
+
+    private assignUniqueFormulaIndicators(formulas: FormulaInfo[]): void {
+        let arrayIndex = 1;
+        let standardIndex = 1;
+
+        formulas.forEach(info => {
+            const isArray = info.formula.startsWith('{=');
+            const prefix = isArray ? 'A' : 'U';
+            const index = isArray ? arrayIndex++ : standardIndex++;
+            info.ufIndicator = `${prefix}${index.toString().padStart(4, '0')}`;
+        });
     }
 
     private assessComplexity(totalFormulas: number, map: Map<string, FormulaInfo>): 'Low' | 'Medium' | 'High' {
@@ -422,7 +579,13 @@ export class FormulaAnalyzer {
                 undocumentedParameters: []
             },
             analysisMode: mode,
-            fallbackReason: reason
+            fallbackReason: reason,
+            uniqueFormulaSummary: {
+                ufCount: 0,
+                estimatedMinutes: 0,
+                minutesPerFormula: 2,
+                reviewedCount: 0
+            }
         };
     }
 
@@ -480,5 +643,34 @@ export class FormulaAnalyzer {
         if (start > 0) snippet = '…' + snippet;
         if (end < formula.length) snippet += '…';
         return snippet;
+    }
+
+    private toFormulaInfo(aggregate: AggregatedFormula): FormulaInfo {
+        const detail = aggregate.complexityDetail;
+        return {
+            formula: aggregate.exampleFormula,
+            normalizedFormula: aggregate.normalizedFormula,
+            exampleFormula: aggregate.exampleFormula,
+            count: aggregate.totalCount,
+            cells: aggregate.cells,
+            ufIndicator: '',
+            fScore: this.computeFScore(detail, aggregate.totalCount, aggregate.isArrayFormula),
+            complexity: detail.band,
+            complexityDetail: detail,
+            isArrayFormula: aggregate.isArrayFormula
+        };
+    }
+
+    private computeFScore(detail: FormulaComplexityResult, usageCount: number, isArrayFormula: boolean): number {
+        let score = detail.score;
+        if (isArrayFormula) {
+            score += 6;
+        }
+        if (usageCount > 100) {
+            score += 4;
+        } else if (usageCount > 20) {
+            score += 2;
+        }
+        return Math.min(99, score);
     }
 }
