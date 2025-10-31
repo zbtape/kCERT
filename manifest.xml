@@ -17,6 +17,8 @@
   
   <AppDomains>
     <AppDomain>http://localhost:8080</AppDomain>
+    <AppDomain>http://localhost:3001</AppDomain>
+    <AppDomain>https://digitalmatrix-cat.kpmgcloudops.com</AppDomain>
   </AppDomains>
   
   <Hosts>

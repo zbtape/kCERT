@@ -12,7 +12,8 @@
     "validate": "office-addin-manifest validate manifest.xml",
     "sideload": "office-addin-dev-settings sideload manifest.xml",
     "unload": "office-addin-dev-settings remove manifest.xml",
-    "validate:hardcodes": "ts-node ./scripts/validate-hardcodes.ts"
+    "validate:hardcodes": "ts-node ./scripts/validate-hardcodes.ts",
+    "proxy": "node proxy-server.js"
   },
   "keywords": [
     "Excel",

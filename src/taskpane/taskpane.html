@@ -54,6 +54,7 @@
                         <label class="toolbar-checkbox"><input type="checkbox" id="listingReviewedFilter"> Reviewed only</label>
                         <input type="search" id="listingSearch" placeholder="Search formulas or UFIs">
                         <button class="ms-Button toolbar-button" id="exportListing" type="button"><span class="ms-Button-label">Export UFL to sheet</span></button>
+                        <button class="ms-Button toolbar-button" id="gptSettings" type="button"><span class="ms-Button-label">GPT Settings</span></button>
                     </div>
                     <div class="toolbar-section" id="mapsToolbar" data-view="mapsView" hidden>
                         <button class="ms-Button toolbar-button" id="toggleMapLegend" type="button"><span class="ms-Button-label">Legend</span></button>
@@ -135,19 +136,24 @@
                     <section class="listing-table-shell">
                         <div class="listing-scroll">
                             <table id="uniqueFormulaTable">
+                                <colgroup id="tableColgroup">
+                                    <!-- Column widths will be set dynamically -->
+                                </colgroup>
                                 <thead>
                                     <tr>
-                                        <th>UFI</th>
-                                        <th>FIN</th>
-                                        <th>Sheet</th>
-                                        <th>Formula (normalized)</th>
-                                        <th>Count</th>
-                                        <th>F-Score</th>
-                                        <th>Complexity</th>
-                                        <th>Status</th>
-                                        <th>Priority</th>
-                                        <th>Comment</th>
-                                        <th>Client Response</th>
+                                        <th data-sortable="false">UFI</th>
+                                        <th data-sortable="false">FIN</th>
+                                        <th data-sortable="true" data-sort-key="sheet">Sheet</th>
+                                        <th data-sortable="false">Formula</th>
+                                        <th data-sortable="false">Formula (normalized)</th>
+                                        <th data-sortable="true" data-sort-key="count" class="sortable-header">Count</th>
+                                        <th data-sortable="true" data-sort-key="fscore" class="sortable-header">F-Score</th>
+                                        <th data-sortable="true" data-sort-key="complexity" class="sortable-header">Complexity</th>
+                                        <th data-sortable="false">Priority</th>
+                                        <th data-sortable="false">Status</th>
+                                        <th data-sortable="false">Comment</th>
+                                        <th data-sortable="false">Client Response</th>
+                                        <th data-sortable="false">Ask GPT</th>
                                     </tr>
                                 </thead>
                                 <tbody id="uniqueFormulaTableBody"></tbody>
@@ -225,6 +231,48 @@
                 <div class="ms-Spinner ms-Spinner--large">
                     <div class="ms-Spinner-circle"></div>
                     <div class="ms-Spinner-label">Analyzing formulas...</div>
+                </div>
+            </div>
+
+            <!-- GPT Settings Modal -->
+            <div id="gptSettingsModal" class="modal-overlay" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>GPT Settings</h3>
+                        <button class="modal-close" id="closeGptSettings">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-field">
+                            <label for="bearerToken">Bearer Token</label>
+                            <input type="password" id="bearerToken" placeholder="Enter bearer token" />
+                        </div>
+                        <div class="form-field">
+                            <label for="engagementCode">Engagement Code</label>
+                            <input type="text" id="engagementCode" placeholder="Enter engagement code" />
+                        </div>
+                        <div id="gptSettingsStatus" class="settings-status"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ms-Button ms-Button--primary" id="saveGptSettings">Save & Validate</button>
+                        <button class="ms-Button" id="cancelGptSettings">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GPT Response Modal -->
+            <div id="gptResponseModal" class="modal-overlay" style="display: none;">
+                <div class="modal-content modal-large">
+                    <div class="modal-header">
+                        <h3>Formula Explanation</h3>
+                        <button class="modal-close" id="closeGptResponse">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="gptResponseContent" class="gpt-response-content"></div>
+                        <div id="gptResponseError" class="gpt-response-error" style="display: none;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ms-Button" id="closeGptResponseBtn">Close</button>
+                    </div>
                 </div>
             </div>
 

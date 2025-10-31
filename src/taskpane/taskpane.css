@@ -13,9 +13,9 @@ body {
 .ms-welcome__header {
     width: 100%;
     padding: 24px 20px;
-    border-bottom: 1px solid #edebe9;
-    background: linear-gradient(135deg, #0f2d52 0%, #164c8c 100%);
-    color: white;
+    border-bottom: 1px solid #e1dfdd;
+    background: linear-gradient(135deg, #faf9f8 0%, #f3f2f1 100%);
+    color: #323130;
 }
 
 .branding {
@@ -34,12 +34,14 @@ body {
     margin: 0;
     font-size: 24px;
     font-weight: 600;
+    color: #164c8c;
 }
 
 .brand-text p {
     margin: 2px 0 0 0;
     font-size: 14px;
     letter-spacing: 0.5px;
+    color: #605e5c;
 }
 
 .ms-welcome__main {
@@ -779,7 +781,8 @@ button#refreshMapSheets {
 }
 
 .listing-scroll {
-    max-height: 400px;
+    max-height: 600px;
+    min-height: 500px;
     overflow: auto;
 }
 
@@ -787,6 +790,7 @@ button#refreshMapSheets {
     width: 100%;
     border-collapse: collapse;
     font-size: 12px;
+    table-layout: fixed;
 }
 
 #uniqueFormulaTable thead {
@@ -801,6 +805,9 @@ button#refreshMapSheets {
     padding: 8px;
     border: 1px solid #edebe9;
     text-align: left;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 
 #uniqueFormulaTable td[contenteditable="true"] {
@@ -811,6 +818,337 @@ button#refreshMapSheets {
 .formula-cell {
     font-family: 'Consolas', 'Monaco', monospace;
     color: #0078d4;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.clickable-formula {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.clickable-formula:hover {
+    color: #005a9e;
+    background-color: #f3f2f1;
+}
+
+.fin-subrow {
+    background-color: #faf9f8;
+}
+
+.fin-subrow td {
+    padding-left: 32px;
+    font-size: 11px;
+    color: #605e5c;
+}
+
+.fin-subrow .fin-cell {
+    font-weight: 600;
+    color: #0078d4;
+}
+
+.add-fin-button {
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    margin-right: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.add-fin-button:hover {
+    background-color: #005a9e;
+}
+
+.add-fin-button:active {
+    background-color: #004578;
+}
+
+.ask-gpt-button {
+    background-color: #ffffff;
+    color: #0078d4;
+    border: 1px solid #0078d4;
+    border-radius: 4px;
+    padding: 4px 12px;
+    cursor: not-allowed;
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.delete-fin-button {
+    background-color: #d13438;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+}
+
+.delete-fin-button:hover {
+    background-color: #a4262c;
+}
+
+.priority-dropdown {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #c8c6c4;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.priority-dropdown {
+    transition: background-color 0.2s;
+}
+
+.priority-dropdown:has(option[value="High"]:checked),
+.priority-dropdown option[value="High"] {
+    background-color: #d13438;
+    color: white;
+}
+
+.priority-dropdown:has(option[value="Medium"]:checked),
+.priority-dropdown option[value="Medium"] {
+    background-color: #ffaa44;
+    color: white;
+}
+
+.priority-dropdown:has(option[value="Low"]:checked),
+.priority-dropdown option[value="Low"] {
+    background-color: #107c10;
+    color: white;
+}
+
+/* Apply background color based on selected value */
+.priority-dropdown[data-selected="High"] {
+    background-color: #d13438;
+    color: white;
+}
+
+.priority-dropdown[data-selected="Medium"] {
+    background-color: #ffaa44;
+    color: white;
+}
+
+.priority-dropdown[data-selected="Low"] {
+    background-color: #107c10;
+    color: white;
+}
+
+.priority-dropdown option {
+    background-color: white;
+    color: #323130;
+}
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.sortable-header:hover {
+    background-color: #edebe9;
+}
+
+.sortable-header::after {
+    content: '';
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.sortable-header.sort-asc::after {
+    content: ' ↑';
+}
+
+.sortable-header.sort-desc::after {
+    content: ' ↓';
+}
+
+#uniqueFormulaTable th {
+    position: relative;
+    min-width: 60px;
+}
+
+#uniqueFormulaTable th.sortable-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.column-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+}
+
+.column-resize-handle:hover {
+    background: #0078d4;
+    opacity: 0.5;
+}
+
+/* GPT Settings Modal */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 0;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content.modal-large {
+    max-width: 700px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #edebe9;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: #605e5c;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: #323130;
+    background-color: #f3f2f1;
+    border-radius: 4px;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #edebe9;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.form-field {
+    margin-bottom: 16px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #323130;
+}
+
+.form-field input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #c8c6c4;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-field input:focus {
+    outline: none;
+    border-color: #0078d4;
+    box-shadow: 0 0 0 1px #0078d4;
+}
+
+.settings-status {
+    padding: 12px;
+    border-radius: 4px;
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.settings-status.info {
+    background-color: #deecf9;
+    color: #004578;
+}
+
+.settings-status.success {
+    background-color: #dff6dd;
+    color: #107c10;
+}
+
+.settings-status.error {
+    background-color: #fed9cc;
+    color: #a4262c;
+}
+
+.gpt-response-content {
+    padding: 16px;
+    background-color: #faf9f8;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.6;
+    font-size: 14px;
+    color: #323130;
+}
+
+.gpt-response-error {
+    padding: 16px;
+    background-color: #fed9cc;
+    border-radius: 4px;
+    color: #a4262c;
+    font-size: 14px;
 }
 
 .listing-empty {

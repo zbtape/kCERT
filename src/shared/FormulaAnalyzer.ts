@@ -126,16 +126,17 @@ export class FormulaAnalyzer {
         worksheets.load('items/name');
         await context.sync();
 
-        const skipSheets = new Set(['kCERT_Analysis_Report']);
+        const skipSheets = new Set(['kCERT_Analysis_Report', 'kCERT_UFL']);
         const targetFilter = options.targetSheets && options.targetSheets.length
             ? new Set(options.targetSheets.map(name => name.toLowerCase()))
             : null;
         const targets = worksheets.items.filter(ws => {
-            if (skipSheets.has(ws.name)) {
+            const normalizedName = ws.name.toLowerCase();
+            if (skipSheets.has(ws.name) || normalizedName.endsWith('_maps')) {
                 return false;
             }
             if (targetFilter) {
-                return targetFilter.has(ws.name.toLowerCase());
+                return targetFilter.has(normalizedName);
             }
             return true;
         });
@@ -149,6 +150,7 @@ export class FormulaAnalyzer {
         const uniqueSet = new Set<string>();
         let totalUfs = 0;
 
+        // First pass: analyze all worksheets without assigning UFIs
         for (const ws of targets) {
             progress?.(`Starting worksheet "${ws.name}"`);
             const result = await this.analyzeWorksheetStreaming(context, ws, options, progress);
@@ -164,6 +166,15 @@ export class FormulaAnalyzer {
 
             await new Promise(resolve => setTimeout(resolve, 0));
         }
+
+        // Aggregate all formulas across worksheets and assign globally unique UFIs
+        const allFormulas: FormulaInfo[] = [];
+        worksheetResults.forEach(worksheet => {
+            allFormulas.push(...worksheet.uniqueFormulasList);
+        });
+        
+        // Assign globally unique UFIs across all worksheets
+        this.assignUniqueFormulaIndicators(allFormulas);
 
         const minutesPerFormula = options.minutesPerFormula ?? 2;
         const uniqueSummary: WorkbookUniqueSummary = {
@@ -317,7 +328,7 @@ export class FormulaAnalyzer {
         const formulaInfos = options.groupSimilarFormulas
             ? Array.from(normalizedMap.values()).map((entry) => this.toFormulaInfo(entry))
             : Array.from(formulaMap.values());
-        this.assignUniqueFormulaIndicators(formulaInfos);
+        // UFI assignment is now done globally in analyzeWorkbook() to ensure uniqueness across worksheets
 
         const ufCount = formulaInfos.length;
         const minutesPerFormula = options.minutesPerFormula ?? 2;
