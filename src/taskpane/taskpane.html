@@ -100,7 +100,10 @@
                     </section>
 
                     <section id="summaryOverview" class="summary-overview" hidden>
-                        <h3 class="section-title">Summary Budget</h3>
+                        <h3 class="section-title">
+                            Estimated Review Time
+                            <span class="help-icon" data-tooltip="Estimated time required to review all unique formulas. Adjust the minutes-per-formula setting above based on reviewer experience and model complexity.">?</span>
+                        </h3>
                         <p class="section-help">Use this overview to gauge the estimated time required for review. Adjust the minutes-per-formula control above to reflect reviewer experience and model complexity.</p>
                         <div class="summary-budget-grid">
                             <div class="summary-budget-card">
@@ -120,6 +123,69 @@
                                 <span class="summary-budget-label">Worksheets analysed</span>
                             </div>
                         </div>
+                    </section>
+
+                    <section id="workbookStats" class="workbook-stats-section" hidden>
+                        <div class="workbook-stats-header">
+                            <h3 class="section-title">Workbook Overview</h3>
+                            <button class="ms-Button ms-Button--primary ask-gpt-workbook-button" id="askGptWorkbook" type="button">
+                                <span class="ms-Button-label">Ask GPT: Explain Workbook</span>
+                            </button>
+                        </div>
+                        <p class="section-help">Comprehensive statistics for the entire workbook.</p>
+                        
+                        <div class="stats-grid">
+                            <div class="stats-group">
+                                <h4 class="stats-group-title">
+                                    Formulas
+                                    <span class="help-icon" data-tooltip="Formula statistics across the entire workbook.">?</span>
+                                </h4>
+                                <div class="stats-grid-inner">
+                                    <div class="stat-card">
+                                        <span class="stat-number" id="wbTotalFormulas">0</span>
+                                        <span class="stat-label">Total Formulas</span>
+                                    </div>
+                                    <div class="stat-card">
+                                        <span class="stat-number" id="wbUniqueFormulas">0</span>
+                                        <span class="stat-label">Unique Formulas</span>
+                                    </div>
+                                    <div class="stat-card">
+                                        <span class="stat-number" id="wbAvgFormulasPerSheet">0</span>
+                                        <span class="stat-label">Avg per Sheet</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="stats-group">
+                                <h4 class="stats-group-title">
+                                    Complexity Distribution
+                                    <span class="help-icon" data-tooltip="Number of worksheets categorized by their overall formula complexity level (High, Medium, or Low).">?</span>
+                                </h4>
+                                <div class="stats-grid-inner">
+                                    <div class="stat-card">
+                                        <span class="stat-number" id="wbComplexityHigh">0</span>
+                                        <span class="stat-label">High</span>
+                                    </div>
+                                    <div class="stat-card">
+                                        <span class="stat-number" id="wbComplexityMedium">0</span>
+                                        <span class="stat-label">Medium</span>
+                                    </div>
+                                    <div class="stat-card">
+                                        <span class="stat-number" id="wbComplexityLow">0</span>
+                                        <span class="stat-label">Low</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="sheetBreakdown" class="sheet-breakdown-section" hidden>
+                        <h3 class="section-title">
+                            Sheet-by-Sheet Breakdown
+                            <span class="help-icon" data-tooltip="Detailed statistics for each worksheet showing formulas, unique formulas, cell counts, formula density, hard-coded values, and complexity level.">?</span>
+                        </h3>
+                        <p class="section-help">Detailed statistics for each worksheet in the workbook.</p>
+                        <div id="sheetBreakdownContent" class="sheet-breakdown-content"></div>
                     </section>
 
                     <section id="resultsSection" class="results-section" style="display: none;">

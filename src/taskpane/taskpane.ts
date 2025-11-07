@@ -35,6 +35,11 @@ Office.onReady((info) => {
         document.getElementById('closeGptSettings')?.addEventListener('click', closeGptSettings);
         document.getElementById('closeGptResponse')?.addEventListener('click', closeGptResponse);
         document.getElementById('closeGptResponseBtn')?.addEventListener('click', closeGptResponse);
+        document.getElementById('askGptWorkbook')?.addEventListener('click', () => {
+            if (analysisResults) {
+                askGptForWorkbook(analysisResults);
+            }
+        });
         ANALYSIS_VIEWS.forEach(viewId => {
             const tab = document.getElementById(`analysisTab_${viewId.replace('View','')}`);
             tab?.addEventListener('click', () => switchAnalysisView(viewId));
@@ -903,6 +908,125 @@ function renderUniqueFormulaSummary(results: AnalysisResult): void {
     if (minutesField) {
         minutesField.value = String(minutesPerFormulaSetting);
     }
+
+    // Render workbook-level statistics
+    renderWorkbookStats(results);
+    
+    // Render sheet-by-sheet breakdown
+    renderSheetBreakdown(results);
+    
+    // Update GPT button states after rendering
+    updateAllGptButtons();
+}
+
+function renderWorkbookStats(results: AnalysisResult): void {
+    const workbookStatsSection = document.getElementById('workbookStats');
+    if (!workbookStatsSection) {
+        return;
+    }
+    workbookStatsSection.hidden = false;
+
+    // Calculate workbook-level statistics
+    const totalFormulas = results.totalFormulas;
+    const uniqueFormulas = results.uniqueFormulas;
+    const totalWorksheets = results.totalWorksheets;
+    
+    // Average formulas per sheet
+    const avgFormulasPerSheet = totalWorksheets > 0 ? (totalFormulas / totalWorksheets).toFixed(0) : '0';
+    
+    // Complexity distribution
+    const complexityCounts = results.worksheets.reduce((acc: { [key: string]: number }, ws: WorksheetAnalysisResult) => {
+        const complexity = ws.formulaComplexity || 'Low';
+        acc[complexity] = (acc[complexity] || 0) + 1;
+        return acc;
+    }, {});
+    
+    // Update workbook stats
+    setText('wbTotalFormulas', formatNumber(totalFormulas));
+    setText('wbUniqueFormulas', formatNumber(uniqueFormulas));
+    setText('wbAvgFormulasPerSheet', formatNumber(avgFormulasPerSheet));
+    
+    setText('wbComplexityHigh', formatNumber(complexityCounts['High'] || 0));
+    setText('wbComplexityMedium', formatNumber(complexityCounts['Medium'] || 0));
+    setText('wbComplexityLow', formatNumber(complexityCounts['Low'] || 0));
+}
+
+function renderSheetBreakdown(results: AnalysisResult): void {
+    const sheetBreakdownSection = document.getElementById('sheetBreakdown');
+    const sheetBreakdownContent = document.getElementById('sheetBreakdownContent');
+    if (!sheetBreakdownSection || !sheetBreakdownContent) {
+        return;
+    }
+    
+    if (results.worksheets.length === 0) {
+        sheetBreakdownSection.hidden = true;
+        return;
+    }
+    
+    sheetBreakdownSection.hidden = false;
+    sheetBreakdownContent.innerHTML = '';
+    
+    // Create a table for sheet breakdown
+    const table = document.createElement('table');
+    table.className = 'sheet-breakdown-table';
+    
+    // Table header
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+        <tr>
+            <th>Sheet Name</th>
+            <th>Formulas</th>
+            <th>Unique</th>
+            <th>Cells</th>
+            <th>Formula %</th>
+            <th>Hard-coded</th>
+            <th>Complexity</th>
+            <th>Ask GPT</th>
+        </tr>
+    `;
+    table.appendChild(thead);
+    
+    // Table body
+    const tbody = document.createElement('tbody');
+    results.worksheets.forEach((worksheet: WorksheetAnalysisResult) => {
+        const totalCells = worksheet.cellCountAnalysis?.totalCells || worksheet.totalCells || 0;
+        const formulas = worksheet.totalFormulas || 0;
+        const formulaPercentage = totalCells > 0 ? ((formulas / totalCells) * 100).toFixed(1) : '0.0';
+        const hardCoded = worksheet.hardCodedValueAnalysis?.totalHardCodedValues || 0;
+        const complexity = worksheet.formulaComplexity || 'Low';
+        
+        const row = document.createElement('tr');
+        
+        // Create Ask GPT button cell
+        const askGptCell = document.createElement('td');
+        askGptCell.className = 'ask-gpt-cell';
+        const askGptButton = document.createElement('button');
+        askGptButton.type = 'button';
+        askGptButton.className = 'ask-gpt-button';
+        askGptButton.textContent = 'Ask GPT';
+        askGptButton.title = 'Get explanation of this sheet';
+        askGptButton.addEventListener('click', () => askGptForSheet(worksheet));
+        askGptCell.appendChild(askGptButton);
+        updateGptButtonState(askGptButton);
+        
+        row.innerHTML = `
+            <td class="sheet-name-cell">${escapeHtml(worksheet.name)}</td>
+            <td class="number-cell">${formatNumber(formulas)}</td>
+            <td class="number-cell">${formatNumber(worksheet.uniqueFormulas || 0)}</td>
+            <td class="number-cell">${formatNumber(totalCells)}</td>
+            <td class="number-cell">${formulaPercentage}%</td>
+            <td class="number-cell">${formatNumber(hardCoded)}</td>
+            <td class="complexity-cell complexity-${escapeHtml(complexity.toLowerCase())}">${escapeHtml(complexity)}</td>
+        `;
+        row.appendChild(askGptCell);
+        tbody.appendChild(row);
+    });
+    
+    table.appendChild(tbody);
+    sheetBreakdownContent.appendChild(table);
+    
+    // Update GPT button states after rendering
+    updateAllGptButtons();
 }
 
 interface FinRowState {
@@ -1757,7 +1881,7 @@ function updateGptButtonState(button: HTMLButtonElement): void {
 }
 
 function updateAllGptButtons(): void {
-    const buttons = document.querySelectorAll('.ask-gpt-button');
+    const buttons = document.querySelectorAll('.ask-gpt-button, .ask-gpt-workbook-button');
     buttons.forEach(button => updateGptButtonState(button as HTMLButtonElement));
 }
 
@@ -1769,19 +1893,24 @@ async function callGptApi(bearerToken: string, engagementCode: string, formula: 
         ? 'http://localhost:3001/api/gpt'
         : 'https://digitalmatrix-cat.kpmgcloudops.com/workspace/api/v1/generativeai/chat';
     
-    // Limit context length
-    const context = formula.substring(0, 25000);
+    // Trim all inputs to avoid whitespace errors
+    const trimmedBearerToken = bearerToken.trim();
+    const trimmedEngagementCode = engagementCode.trim();
+    const trimmedFormula = formula.trim();
     
-    const prompt = `Explain this Excel formula in plain English without any formatting. Formula: ${context}`;
+    // Limit context length after trimming
+    const context = trimmedFormula.substring(0, 25000);
+    
+    const prompt = `Explain this Excel formula in plain English without any formatting. Formula: ${context}`.trim();
     
     const headers = {
         'Content-Type': 'application/json',
         'Accept': '*/*',
-        'Authorization': `Bearer ${bearerToken}`
+        'Authorization': `Bearer ${trimmedBearerToken}`
     };
     
     const requestBody = {
-        engagementCode: engagementCode,
+        engagementCode: trimmedEngagementCode,
         modelName: 'GPT 4o Omni',
         provider: 'AzureOpenAI',
         providerModelName: 'gpt-4o',
@@ -1822,7 +1951,7 @@ async function callGptApi(bearerToken: string, engagementCode: string, formula: 
             // For proxy: send bearerToken in body
             requestPayload = {
                 ...requestBody,
-                bearerToken: bearerToken
+                bearerToken: trimmedBearerToken
             };
             requestHeaders = {
                 'Content-Type': 'application/json'
@@ -2008,7 +2137,8 @@ async function askGpt(formula: string, ufi: string): Promise<void> {
                     // Not JSON, use as-is
                 }
                 
-                contentDiv.textContent = cleanedExplanation;
+                // Convert markdown to HTML for better formatting
+                contentDiv.innerHTML = markdownToHtml(cleanedExplanation);
                 errorDiv.style.display = 'none';
             } else {
                 // Show the raw response structure for debugging
@@ -2035,6 +2165,568 @@ function closeGptResponse(): void {
     const modal = document.getElementById('gptResponseModal');
     if (modal) {
         modal.style.display = 'none';
+        // Reset modal title
+        const modalTitle = modal.querySelector('.modal-header h3');
+        if (modalTitle) {
+            modalTitle.textContent = 'Formula Explanation';
+        }
+    }
+}
+
+/**
+ * Convert markdown to HTML for display
+ */
+function markdownToHtml(markdown: string): string {
+    let html = markdown.trim();
+    
+    // Escape HTML first to prevent XSS
+    html = escapeHtml(html);
+    
+    // Clean up common markdown artifacts and malformed patterns
+    // Remove patterns like "4.*aaa*" or similar malformed markdown
+    html = html.replace(/\d+\.\*[^*]*\*/g, '');
+    
+    // Process in order: headers, code, bold, italic, lists, paragraphs
+    
+    // Headers: # Header, ## Header, ### Header (must be at start of line)
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    
+    // Code blocks: `code` (inline code)
+    html = html.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
+    
+    // Bold: **text** or __text__ (process before italic to avoid conflicts)
+    html = html.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__([^_\n]+?)__/g, '<strong>$1</strong>');
+    
+    // Italic: *text* or _text_ (single asterisk/underscore, not part of bold)
+    // More careful matching to avoid false positives
+    html = html.replace(/(^|[^*\s])\*([^*\s\n][^*\n]*?[^*\s\n])\*([^*\s]|$)/g, '$1<em>$2</em>$3');
+    html = html.replace(/(^|[^_\s])_([^_\s\n][^_\n]*?[^_\s\n])_([^_\s]|$)/g, '$1<em>$2</em>$3');
+    
+    // Handle special case: *Purpose* at start of line or after colon
+    html = html.replace(/(:\s*|\n\s*)\*([^*\n]+?)\*/g, '$1<em>$2</em>');
+    
+    // Lists: - item or * item (must be at start of line or after whitespace)
+    // Process lists line by line
+    const lines = html.split('\n');
+    const processedLines: string[] = [];
+    let inList = false;
+    let listType: 'ul' | 'ol' | null = null;
+    
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        const trimmedLine = line.trim();
+        
+        // Check for bullet list item
+        const bulletMatch = trimmedLine.match(/^[-*]\s+(.+)$/);
+        // Check for numbered list item
+        const numberedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+        
+        if (bulletMatch) {
+            if (!inList || listType !== 'ul') {
+                if (inList && listType === 'ol') {
+                    processedLines.push('</ol>');
+                } else if (inList) {
+                    processedLines.push('</ul>');
+                }
+                processedLines.push('<ul>');
+                inList = true;
+                listType = 'ul';
+            }
+            processedLines.push('<li>' + bulletMatch[1] + '</li>');
+        } else if (numberedMatch) {
+            if (!inList || listType !== 'ol') {
+                if (inList && listType === 'ul') {
+                    processedLines.push('</ul>');
+                } else if (inList) {
+                    processedLines.push('</ol>');
+                }
+                processedLines.push('<ol>');
+                inList = true;
+                listType = 'ol';
+            }
+            processedLines.push('<li>' + numberedMatch[1] + '</li>');
+        } else {
+            // Not a list item
+            if (inList) {
+                if (listType === 'ul') {
+                    processedLines.push('</ul>');
+                } else {
+                    processedLines.push('</ol>');
+                }
+                inList = false;
+                listType = null;
+            }
+            // Only add non-empty lines
+            if (trimmedLine || line.includes('<')) {
+                processedLines.push(line);
+            }
+        }
+    }
+    
+    // Close any open list
+    if (inList) {
+        if (listType === 'ul') {
+            processedLines.push('</ul>');
+        } else {
+            processedLines.push('</ol>');
+        }
+    }
+    
+    html = processedLines.join('\n');
+    
+    // Convert double newlines to paragraph breaks, but preserve HTML structure
+    // Split by double newlines, but be careful not to break HTML tags
+    const sections = html.split(/\n\n+/);
+    html = sections.map(section => {
+        section = section.trim();
+        if (!section) return '';
+        
+        // Don't wrap if it's already a block-level HTML element
+        if (section.match(/^<(h[1-6]|ul|ol|li|p|div|code|pre)/)) {
+            return section;
+        }
+        
+        // Don't wrap if it contains block-level elements
+        if (section.includes('<h') || section.includes('<ul') || section.includes('<ol') || section.includes('<li')) {
+            return section;
+        }
+        
+        // Wrap in paragraph
+        return '<p>' + section + '</p>';
+    }).join('\n\n');
+    
+    // Convert remaining single newlines to <br>, but not inside HTML tags
+    html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
+    
+    // Clean up any double <br> tags
+    html = html.replace(/<br>\s*<br>/g, '<br>');
+    
+    // Clean up any empty paragraphs
+    html = html.replace(/<p>\s*<\/p>/g, '');
+    html = html.replace(/<p><br><\/p>/g, '');
+    
+    return html;
+}
+
+/**
+ * Gather sheet data for GPT analysis
+ */
+async function gatherSheetData(worksheet: WorksheetAnalysisResult): Promise<string> {
+    let sheetData = `Sheet Name: ${worksheet.name}\n`;
+    sheetData += `Total Formulas: ${worksheet.totalFormulas}\n`;
+    sheetData += `Unique Formulas: ${worksheet.uniqueFormulas}\n`;
+    sheetData += `Total Cells: ${worksheet.cellCountAnalysis?.totalCells || worksheet.totalCells || 0}\n`;
+    sheetData += `Complexity: ${worksheet.formulaComplexity || 'Low'}\n`;
+    sheetData += `Hard-coded Values: ${worksheet.hardCodedValueAnalysis?.totalHardCodedValues || 0}\n\n`;
+    
+    // Get sample formulas from the sheet
+    try {
+        await Excel.run(async (context) => {
+            const sheet = context.workbook.worksheets.getItem(worksheet.name);
+            const usedRange = sheet.getUsedRange();
+            usedRange.load(['address', 'formulas']);
+            await context.sync();
+            
+            if (usedRange.formulas) {
+                sheetData += `Sample Formulas:\n`;
+                const formulas: string[] = [];
+                const maxFormulas = 50; // Limit to avoid token limits
+                
+                for (let i = 0; i < usedRange.formulas.length && formulas.length < maxFormulas; i++) {
+                    for (let j = 0; j < usedRange.formulas[i].length && formulas.length < maxFormulas; j++) {
+                        const formula = usedRange.formulas[i][j];
+                        if (formula && typeof formula === 'string' && formula.startsWith('=')) {
+                            formulas.push(formula);
+                        }
+                    }
+                }
+                
+                // Get unique formulas
+                const uniqueFormulas = Array.from(new Set(formulas));
+                uniqueFormulas.slice(0, 30).forEach((formula, idx) => {
+                    sheetData += `${idx + 1}. ${formula.trim()}\n`;
+                });
+                
+                if (uniqueFormulas.length > 30) {
+                    sheetData += `... and ${uniqueFormulas.length - 30} more unique formulas\n`;
+                }
+            }
+        });
+    } catch (error) {
+        console.warn('Could not gather sheet formulas:', error);
+        // Use unique formulas list from analysis if available
+        if (worksheet.uniqueFormulasList && worksheet.uniqueFormulasList.length > 0) {
+            sheetData += `Sample Formulas:\n`;
+            worksheet.uniqueFormulasList.slice(0, 30).forEach((formulaInfo, idx) => {
+                sheetData += `${idx + 1}. ${formulaInfo.formula.trim()}\n`;
+            });
+        }
+    }
+    
+    // Final trim to remove any trailing whitespace
+    return sheetData.trim();
+}
+
+/**
+ * Gather workbook summary data for GPT analysis
+ */
+function gatherWorkbookData(results: AnalysisResult): string {
+    let workbookData = `Workbook Summary:\n`;
+    workbookData += `Total Worksheets: ${results.totalWorksheets}\n`;
+    workbookData += `Total Formulas: ${results.totalFormulas}\n`;
+    workbookData += `Unique Formulas: ${results.uniqueFormulas}\n`;
+    workbookData += `Total Cells: ${results.totalCells}\n\n`;
+    
+    workbookData += `Worksheets:\n`;
+    results.worksheets.forEach((ws, idx) => {
+        workbookData += `${idx + 1}. ${ws.name}\n`;
+        workbookData += `   - Formulas: ${ws.totalFormulas}, Unique: ${ws.uniqueFormulas}\n`;
+        workbookData += `   - Cells: ${ws.cellCountAnalysis?.totalCells || ws.totalCells || 0}\n`;
+        workbookData += `   - Complexity: ${ws.formulaComplexity || 'Low'}\n`;
+        workbookData += `   - Hard-coded Values: ${ws.hardCodedValueAnalysis?.totalHardCodedValues || 0}\n`;
+        
+        // Add sample formulas from each sheet
+        if (ws.uniqueFormulasList && ws.uniqueFormulasList.length > 0) {
+            workbookData += `   - Sample Formulas:\n`;
+            ws.uniqueFormulasList.slice(0, 5).forEach((formulaInfo, fIdx) => {
+                const formula = formulaInfo.formula.trim();
+                workbookData += `     ${fIdx + 1}. ${formula.substring(0, 100)}${formula.length > 100 ? '...' : ''}\n`;
+            });
+            if (ws.uniqueFormulasList.length > 5) {
+                workbookData += `     ... and ${ws.uniqueFormulasList.length - 5} more\n`;
+            }
+        }
+        workbookData += `\n`;
+    });
+    
+    // Final trim to remove any trailing whitespace
+    return workbookData.trim();
+}
+
+/**
+ * Ask GPT to explain a specific sheet
+ */
+async function askGptForSheet(worksheet: WorksheetAnalysisResult): Promise<void> {
+    const settings = getGptSettings();
+    if (!settings || !settings.isValidated) {
+        showStatusMessage('Please configure GPT settings first.', 'warning');
+        openGptSettings();
+        return;
+    }
+    
+    const modal = document.getElementById('gptResponseModal');
+    const contentDiv = document.getElementById('gptResponseContent');
+    const errorDiv = document.getElementById('gptResponseError');
+    
+    if (!modal || !contentDiv || !errorDiv) return;
+    
+    // Update modal title
+    const modalTitle = modal.querySelector('.modal-header h3');
+    if (modalTitle) {
+        modalTitle.textContent = `Sheet Explanation: ${worksheet.name}`;
+    }
+    
+    // Show modal with loading state
+    modal.style.display = 'flex';
+    contentDiv.textContent = 'Analyzing sheet and getting explanation...';
+    errorDiv.style.display = 'none';
+    
+    // Close modal when clicking outside
+    const clickOutsideHandler = (e: MouseEvent) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            modal.removeEventListener('click', clickOutsideHandler);
+        }
+    };
+    modal.addEventListener('click', clickOutsideHandler);
+    
+    try {
+        // Gather sheet data
+        const sheetData = await gatherSheetData(worksheet);
+        
+        // Call GPT API with sheet explanation prompt
+        const response = await callGptApiForExplanation(
+            settings.bearerToken,
+            settings.engagementCode,
+            sheetData,
+            `Explain what this Excel worksheet does based on its structure, formulas, and data. Worksheet: ${worksheet.name}`
+        );
+        
+        if (response.error) {
+            errorDiv.textContent = response.error;
+            errorDiv.style.display = 'block';
+            contentDiv.textContent = '';
+        } else {
+            const explanation = extractExplanationFromResponse(response);
+            if (explanation && explanation.trim()) {
+                // Convert markdown to HTML for better formatting
+                contentDiv.innerHTML = markdownToHtml(explanation.trim());
+                errorDiv.style.display = 'none';
+            } else {
+                errorDiv.textContent = 'Could not extract explanation from response. Please check the browser console for details.';
+                errorDiv.style.display = 'block';
+                contentDiv.textContent = '';
+                console.error('Could not extract explanation from response:', response);
+            }
+        }
+    } catch (error: any) {
+        errorDiv.textContent = `Error: ${error.message || 'Failed to get explanation'}`;
+        errorDiv.style.display = 'block';
+        contentDiv.textContent = '';
+    }
+}
+
+/**
+ * Ask GPT to explain the entire workbook
+ */
+async function askGptForWorkbook(results: AnalysisResult): Promise<void> {
+    const settings = getGptSettings();
+    if (!settings || !settings.isValidated) {
+        showStatusMessage('Please configure GPT settings first.', 'warning');
+        openGptSettings();
+        return;
+    }
+    
+    const modal = document.getElementById('gptResponseModal');
+    const contentDiv = document.getElementById('gptResponseContent');
+    const errorDiv = document.getElementById('gptResponseError');
+    
+    if (!modal || !contentDiv || !errorDiv) return;
+    
+    // Update modal title
+    const modalTitle = modal.querySelector('.modal-header h3');
+    if (modalTitle) {
+        modalTitle.textContent = 'Workbook Explanation';
+    }
+    
+    // Show modal with loading state
+    modal.style.display = 'flex';
+    contentDiv.textContent = 'Analyzing workbook and getting explanation...';
+    errorDiv.style.display = 'none';
+    
+    // Close modal when clicking outside
+    const clickOutsideHandler = (e: MouseEvent) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            modal.removeEventListener('click', clickOutsideHandler);
+        }
+    };
+    modal.addEventListener('click', clickOutsideHandler);
+    
+    try {
+        // Gather workbook data
+        const workbookData = gatherWorkbookData(results);
+        
+        // Call GPT API with workbook explanation prompt
+        const response = await callGptApiForExplanation(
+            settings.bearerToken,
+            settings.engagementCode,
+            workbookData,
+            'Explain what this Excel workbook does at a high level based on its structure, worksheets, formulas, and data. Provide an overview of the purpose and functionality of the workbook.'
+        );
+        
+        if (response.error) {
+            errorDiv.textContent = response.error;
+            errorDiv.style.display = 'block';
+            contentDiv.textContent = '';
+        } else {
+            const explanation = extractExplanationFromResponse(response);
+            if (explanation && explanation.trim()) {
+                // Convert markdown to HTML for better formatting
+                contentDiv.innerHTML = markdownToHtml(explanation.trim());
+                errorDiv.style.display = 'none';
+            } else {
+                errorDiv.textContent = 'Could not extract explanation from response. Please check the browser console for details.';
+                errorDiv.style.display = 'block';
+                contentDiv.textContent = '';
+                console.error('Could not extract explanation from response:', response);
+            }
+        }
+    } catch (error: any) {
+        errorDiv.textContent = `Error: ${error.message || 'Failed to get explanation'}`;
+        errorDiv.style.display = 'block';
+        contentDiv.textContent = '';
+    }
+}
+
+/**
+ * Extract explanation from GPT response (reusable function)
+ */
+function extractExplanationFromResponse(response: any): string {
+    let explanation = '';
+    
+    // Try different response structures (same as askGpt function)
+    if (response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
+        const choice = response.choices[0];
+        if (choice.message && typeof choice.message === 'string') {
+            explanation = choice.message;
+        } else if (choice.message && choice.message.content) {
+            explanation = choice.message.content;
+        } else if (choice.text) {
+            explanation = choice.text;
+        } else if (choice.content) {
+            explanation = choice.content;
+        }
+    }
+    
+    if (!explanation) {
+        if (response.response) {
+            explanation = typeof response.response === 'string' ? response.response : JSON.stringify(response.response);
+        } else if (response.data) {
+            explanation = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+        }
+    }
+    
+    if (!explanation) {
+        if (response.text) {
+            explanation = response.text;
+        } else if (response.content) {
+            explanation = response.content;
+        } else if (response.message) {
+            explanation = response.message;
+        } else if (response.result) {
+            explanation = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
+        } else if (response.output) {
+            explanation = typeof response.output === 'string' ? response.output : JSON.stringify(response.output);
+        }
+    }
+    
+    if (!explanation && typeof response === 'string') {
+        explanation = response;
+    }
+    
+    if (!explanation && response.message) {
+        const msg = response.message;
+        if (typeof msg === 'string') {
+            explanation = msg;
+        } else if (msg.content) {
+            explanation = msg.content;
+        } else if (msg.text) {
+            explanation = msg.text;
+        }
+    }
+    
+    // Clean up the explanation
+    if (explanation && explanation.trim()) {
+        let cleanedExplanation = explanation.trim();
+        try {
+            const parsed = JSON.parse(cleanedExplanation);
+            if (typeof parsed === 'string') {
+                cleanedExplanation = parsed;
+            } else if (parsed.text || parsed.content || parsed.message) {
+                cleanedExplanation = parsed.text || parsed.content || parsed.message;
+            }
+        } catch (e) {
+            // Not JSON, use as-is
+        }
+        return cleanedExplanation;
+    }
+    
+    return '';
+}
+
+/**
+ * Call GPT API for explanations (sheet or workbook)
+ */
+async function callGptApiForExplanation(bearerToken: string, engagementCode: string, context: string, prompt: string): Promise<any> {
+    const useProxy = true;
+    const url = useProxy 
+        ? 'http://localhost:3001/api/gpt'
+        : 'https://digitalmatrix-cat.kpmgcloudops.com/workspace/api/v1/generativeai/chat';
+    
+    // Trim all inputs to avoid whitespace errors
+    const trimmedBearerToken = bearerToken.trim();
+    const trimmedEngagementCode = engagementCode.trim();
+    const trimmedContext = context.trim();
+    const trimmedPrompt = prompt.trim();
+    
+    // Limit context length after trimming
+    const limitedContext = trimmedContext.substring(0, 20000);
+    
+    const fullPrompt = `${trimmedPrompt}\n\nContext:\n${limitedContext}`.trim();
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'Authorization': `Bearer ${trimmedBearerToken}`
+    };
+    
+    const requestBody = {
+        engagementCode: trimmedEngagementCode,
+        modelName: 'GPT 4o Omni',
+        provider: 'AzureOpenAI',
+        providerModelName: 'gpt-4o',
+        parameters: {
+            max_tokens: 2048,
+            frequency_penalty: 2,
+            presence_penalty: 2,
+            temperature: 0.7,
+            top_p: 1
+        },
+        prompt: fullPrompt,
+        messages: [
+            {
+                role: 'system',
+                content: 'You are a helpful assistant that explains Excel workbooks and worksheets in plain English. Provide clear, concise explanations that help reviewers understand the purpose and functionality of the workbook or worksheet.'
+            },
+            {
+                role: 'user',
+                content: fullPrompt
+            }
+        ]
+    };
+    
+    try {
+        let requestPayload: any;
+        let requestHeaders: any;
+        
+        if (useProxy) {
+            requestPayload = {
+                ...requestBody,
+                bearerToken: trimmedBearerToken
+            };
+            requestHeaders = {
+                'Content-Type': 'application/json'
+            };
+        } else {
+            requestPayload = requestBody;
+            requestHeaders = headers;
+        }
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: requestHeaders,
+            body: JSON.stringify(requestPayload),
+            mode: 'cors',
+            credentials: 'omit'
+        });
+        
+        if (response.status === 401) {
+            return { error: 'Authentication failed. Please check your bearer token.' };
+        }
+        
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => '');
+            return { error: `Request failed with status ${response.status}. ${errorText ? `Response: ${errorText.substring(0, 200)}` : ''}` };
+        }
+        
+        const data = await response.json();
+        console.log('GPT API Response:', JSON.stringify(data, null, 2));
+        
+        return data;
+    } catch (error: any) {
+        console.error('GPT API error:', error);
+        
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+            return { 
+                error: 'Failed to connect to GPT API. This is likely a CORS (Cross-Origin Resource Sharing) issue. The API server needs to allow requests from this Excel Add-in domain. Please contact IT support to: 1) Configure CORS headers on the API to allow requests from your add-in domain, or 2) Set up a proxy service to handle the API calls. Check the browser console (F12) for more details.' 
+            };
+        }
+        
+        return { error: error.message || 'Failed to connect to GPT API' };
     }
 }
 
