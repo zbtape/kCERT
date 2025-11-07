@@ -847,6 +847,24 @@ button#refreshMapSheets {
     color: #0078d4;
 }
 
+/* Grey out only Priority and Status columns in UFI rows when no FIN exists */
+.ufi-priority-status-greyed {
+    opacity: 0.5;
+    background-color: #f3f2f1;
+    color: #8a8886;
+    pointer-events: none;
+}
+
+.ufi-priority-status-greyed select {
+    background-color: #f3f2f1 !important;
+    color: #8a8886 !important;
+    cursor: not-allowed;
+}
+
+.ufi-priority-status-greyed[contenteditable="true"] {
+    cursor: not-allowed;
+}
+
 .add-fin-button {
     background-color: #0078d4;
     color: white;

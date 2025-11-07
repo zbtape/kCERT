@@ -984,10 +984,13 @@ function renderUniqueFormulaListing(results: AnalysisResult): void {
             const complexityCell = document.createElement('td');
             complexityCell.textContent = formulaInfo.complexity;
             
+            // UFI rows have priority/status that are greyed out until FIN exists
             const priorityCell = document.createElement('td');
             const prioritySelect = document.createElement('select');
             prioritySelect.className = 'priority-dropdown';
             prioritySelect.setAttribute('data-field', 'priority');
+            prioritySelect.setAttribute('data-ufi', formulaInfo.ufIndicator);
+            prioritySelect.disabled = true; // Disabled until FIN exists
             prioritySelect.innerHTML = `
                 <option value="">--</option>
                 <option value="High">High</option>
@@ -1008,10 +1011,14 @@ function renderUniqueFormulaListing(results: AnalysisResult): void {
                 }
             });
             priorityCell.appendChild(prioritySelect);
+            priorityCell.classList.add('ufi-priority-status-cell');
             
             const statusCell = document.createElement('td');
-            statusCell.contentEditable = 'true';
             statusCell.setAttribute('data-field', 'status');
+            statusCell.setAttribute('data-ufi', formulaInfo.ufIndicator);
+            statusCell.classList.add('ufi-priority-status-cell');
+            // Will be enabled/disabled based on FIN existence
+            // Initially disabled (greyed out) until FIN exists
             
             const commentCell = document.createElement('td');
             commentCell.contentEditable = 'true';
@@ -1055,6 +1062,19 @@ function renderUniqueFormulaListing(results: AnalysisResult): void {
                 const finRow = createFinRow(formulaInfo.ufIndicator, finState.finIndex, tbody, row);
                 rows.push(finRow);
             });
+            
+            // Enable Priority/Status in UFI row if FIN rows exist
+            if (existingFins.length > 0) {
+                prioritySelect.disabled = false;
+                statusCell.contentEditable = 'true';
+                priorityCell.classList.remove('ufi-priority-status-greyed');
+                statusCell.classList.remove('ufi-priority-status-greyed');
+            } else {
+                prioritySelect.disabled = true;
+                statusCell.removeAttribute('contenteditable');
+                priorityCell.classList.add('ufi-priority-status-greyed');
+                statusCell.classList.add('ufi-priority-status-greyed');
+            }
         });
     });
 
@@ -1356,6 +1376,9 @@ function addFinRow(ufi: string, tbody: HTMLElement, parentRow: HTMLTableRowEleme
     
     const finRow = createFinRow(ufi, finIndex, tbody, parentRow);
     tbody.insertBefore(finRow, parentRow.nextSibling);
+    
+    // Enable Priority/Status in parent UFI row when FIN is added
+    updateUfiRowPriorityStatusState(ufi, tbody);
 }
 
 function createFinRow(ufi: string, finIndex: number, tbody: HTMLElement, parentRow: HTMLTableRowElement): HTMLTableRowElement {
@@ -1401,11 +1424,41 @@ function createFinRow(ufi: string, finIndex: number, tbody: HTMLElement, parentR
     const complexityCell = document.createElement('td');
     complexityCell.textContent = ''; // Empty for nested rows
     
+    // FIN rows have priority and status
     const priorityCell = document.createElement('td');
-    priorityCell.textContent = ''; // Empty for nested rows
+    const prioritySelect = document.createElement('select');
+    prioritySelect.className = 'priority-dropdown';
+    prioritySelect.setAttribute('data-field', 'priority');
+    prioritySelect.setAttribute('data-ufi', ufi);
+    prioritySelect.setAttribute('data-fin', finIndex.toString());
+    prioritySelect.innerHTML = `
+        <option value="">--</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+    `;
+    prioritySelect.addEventListener('change', (e) => {
+        const select = e.target as HTMLSelectElement;
+        select.setAttribute('data-selected', select.value);
+        if (select.value) {
+            select.style.backgroundColor = 
+                select.value === 'High' ? '#d13438' :
+                select.value === 'Medium' ? '#ffaa44' : '#107c10';
+            select.style.color = 'white';
+        } else {
+            select.style.backgroundColor = '';
+            select.style.color = '';
+        }
+        // Update parent UFI row Priority/Status state when FIN priority changes
+        updateUfiRowPriorityStatusState(ufi, tbody);
+    });
+    priorityCell.appendChild(prioritySelect);
     
     const statusCell = document.createElement('td');
-    statusCell.textContent = ''; // Empty for nested rows
+    statusCell.contentEditable = 'true';
+    statusCell.setAttribute('data-field', 'status');
+    statusCell.setAttribute('data-ufi', ufi);
+    statusCell.setAttribute('data-fin', finIndex.toString());
     
     const commentCell = document.createElement('td');
     commentCell.contentEditable = 'true';
@@ -1448,7 +1501,43 @@ function deleteFinRow(ufi: string, finIndex: number, finRow: HTMLTableRowElement
     // Remove from DOM
     finRow.remove();
     
-    // Update remaining FIN indices if needed (for display purposes, but we keep original indices for consistency)
+    // Update UFI row Priority/Status state - grey out if no FIN rows remain
+    updateUfiRowPriorityStatusState(ufi, tbody);
+}
+
+/**
+ * Update the Priority/Status editable state of a UFI row based on whether FIN rows exist
+ */
+function updateUfiRowPriorityStatusState(ufi: string, tbody: HTMLElement): void {
+    const ufiRow = tbody.querySelector(`tr[data-row-type="ufi"][data-ufi="${ufi}"]`) as HTMLTableRowElement;
+    if (!ufiRow) return;
+    
+    const cells = ufiRow.querySelectorAll('td');
+    if (cells.length < 10) return;
+    
+    const priorityCell = cells[8]; // Priority is column 9 (0-indexed: 8)
+    const statusCell = cells[9]; // Status is column 10 (0-indexed: 9)
+    const prioritySelect = priorityCell.querySelector('select') as HTMLSelectElement;
+    
+    const finRows = tbody.querySelectorAll(`tr[data-row-type="fin"][data-ufi="${ufi}"]`);
+    
+    if (finRows.length > 0) {
+        // Enable Priority/Status when FIN exists
+        if (prioritySelect) {
+            prioritySelect.disabled = false;
+        }
+        statusCell.contentEditable = 'true';
+        priorityCell.classList.remove('ufi-priority-status-greyed');
+        statusCell.classList.remove('ufi-priority-status-greyed');
+    } else {
+        // Grey out Priority/Status when no FIN exists
+        if (prioritySelect) {
+            prioritySelect.disabled = true;
+        }
+        statusCell.removeAttribute('contenteditable');
+        priorityCell.classList.add('ufi-priority-status-greyed');
+        statusCell.classList.add('ufi-priority-status-greyed');
+    }
 }
 
 // GPT Settings Management
@@ -2042,6 +2131,9 @@ async function exportUniqueFormulaListing(): Promise<void> {
                             // Extract UFI from span or data attribute
                             const ufiSpan = cells[0].querySelector('span');
                             ufi = ufiSpan ? ufiSpan.textContent || '' : tr.getAttribute('data-ufi') || '';
+                        } else if (rowType === 'fin') {
+                            // For FIN rows, get UFI from data attribute
+                            ufi = tr.getAttribute('data-ufi') || '';
                         }
                         const fin = rowType === 'fin'
                             ? cells[1].textContent || ''
@@ -2052,10 +2144,11 @@ async function exportUniqueFormulaListing(): Promise<void> {
                         const count = rowType === 'ufi' ? cells[5].textContent || '' : '';
                         const fScore = rowType === 'ufi' ? cells[6].textContent || '' : '';
                         const complexity = rowType === 'ufi' ? cells[7].textContent || '' : '';
-                        // Extract priority from dropdown
-                        const prioritySelect = cells[8].querySelector('select');
-                        const priority = prioritySelect ? prioritySelect.value : cells[8].textContent || '';
-                        const status = cells[9].textContent || '';
+        // Extract priority from dropdown (both UFI and FIN rows can have priority)
+        const prioritySelect = cells[8].querySelector('select');
+        const priority = prioritySelect ? prioritySelect.value : cells[8].textContent || '';
+        // Extract status (both UFI and FIN rows can have status)
+        const status = cells[9].textContent || '';
                         const comment = cells[10].textContent || '';
                         const clientResponse = cells[11].textContent || '';
                         
