@@ -1753,7 +1753,11 @@ async function askGpt(formula: string, ufi: string): Promise<void> {
             // Structure 1: response.choices[0].message.content (OpenAI format)
             if (response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
                 const choice = response.choices[0];
-                if (choice.message && choice.message.content) {
+                // Check if message is a string (direct message)
+                if (choice.message && typeof choice.message === 'string') {
+                    explanation = choice.message;
+                    console.log('Found explanation in response.choices[0].message (string)');
+                } else if (choice.message && choice.message.content) {
                     explanation = choice.message.content;
                     console.log('Found explanation in response.choices[0].message.content');
                 } else if (choice.text) {
