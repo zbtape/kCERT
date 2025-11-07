@@ -1085,26 +1085,65 @@ function renderUniqueFormulaListing(results: AnalysisResult): void {
         return;
     }
 
-    // Sort rows, keeping FIN rows with their parent UFI rows
-    // Default sort by F-Score
-    const sortedUfiRows = rows.filter(r => r.getAttribute('data-row-type') === 'ufi');
-    sortedUfiRows.sort((a, b) => {
-        const scoreA = Number(a.children[6].textContent || '0');
-        const scoreB = Number(b.children[6].textContent || '0');
-        return scoreB - scoreA;
-    });
-
-    // Insert rows in order: UFI row followed by its FIN rows
-    sortedUfiRows.forEach(ufiRow => {
-        tbody.appendChild(ufiRow);
-        const ufi = ufiRow.getAttribute('data-ufi');
-        if (ufi) {
-            const finRows = rows.filter(r => 
-                r.getAttribute('data-row-type') === 'fin' && 
-                r.getAttribute('data-ufi') === ufi
-            );
-            finRows.forEach(finRow => tbody.appendChild(finRow));
+    // Group rows by sheet, then sort within each sheet
+    const rowsBySheet = new Map<string, HTMLTableRowElement[]>();
+    const ufiRows = rows.filter(r => r.getAttribute('data-row-type') === 'ufi');
+    
+    // Group UFI rows by sheet
+    ufiRows.forEach(ufiRow => {
+        const sheetName = ufiRow.getAttribute('data-worksheet') || '';
+        if (!rowsBySheet.has(sheetName)) {
+            rowsBySheet.set(sheetName, []);
         }
+        rowsBySheet.get(sheetName)!.push(ufiRow);
+    });
+    
+    // Sort sheets alphabetically
+    const sortedSheets = Array.from(rowsBySheet.keys()).sort();
+    
+    // Sort UFI rows within each sheet by F-Score (descending)
+    sortedSheets.forEach(sheetName => {
+        const sheetUfiRows = rowsBySheet.get(sheetName)!;
+        sheetUfiRows.sort((a, b) => {
+            const scoreA = Number(a.getAttribute('data-fscore') || a.children[6].textContent || '0');
+            const scoreB = Number(b.getAttribute('data-fscore') || b.children[6].textContent || '0');
+            return scoreB - scoreA;
+        });
+    });
+    
+    // Insert rows grouped by sheet with headers
+    sortedSheets.forEach((sheetName, sheetIndex) => {
+        // Add sheet header row before each sheet group (except first)
+        if (sheetIndex > 0) {
+            const separatorRow = document.createElement('tr');
+            separatorRow.className = 'sheet-separator-row';
+            separatorRow.innerHTML = `<td colspan="13" class="sheet-separator-cell"></td>`;
+            tbody.appendChild(separatorRow);
+        }
+        
+        // Add sheet header row
+        const headerRow = document.createElement('tr');
+        headerRow.className = 'sheet-header-row';
+        const headerCell = document.createElement('td');
+        headerCell.colSpan = 13;
+        headerCell.className = 'sheet-header-cell';
+        headerCell.textContent = `Sheet: ${sheetName}`;
+        headerRow.appendChild(headerCell);
+        tbody.appendChild(headerRow);
+        
+        // Insert UFI rows for this sheet with their FIN rows
+        const sheetUfiRows = rowsBySheet.get(sheetName)!;
+        sheetUfiRows.forEach(ufiRow => {
+            tbody.appendChild(ufiRow);
+            const ufi = ufiRow.getAttribute('data-ufi');
+            if (ufi) {
+                const finRows = rows.filter(r => 
+                    r.getAttribute('data-row-type') === 'fin' && 
+                    r.getAttribute('data-ufi') === ufi
+                );
+                finRows.forEach(finRow => tbody.appendChild(finRow));
+            }
+        });
     });
     
     // Attach sort handlers to sortable headers
@@ -1141,7 +1180,11 @@ function attachSortHandlers(tbody: HTMLElement): void {
 }
 
 function sortTable(tbody: HTMLElement, sortKey: string, direction: 'asc' | 'desc'): void {
-    // Store FIN rows grouped by UFI before clearing
+    // Store sheet headers and separators
+    const sheetHeaders = Array.from(tbody.querySelectorAll('tr.sheet-header-row')) as HTMLTableRowElement[];
+    const sheetSeparators = Array.from(tbody.querySelectorAll('tr.sheet-separator-row')) as HTMLTableRowElement[];
+    
+    // Store FIN rows grouped by UFI
     const finRowsByUfi = new Map<string, HTMLTableRowElement[]>();
     const allFinRows = Array.from(tbody.querySelectorAll('tr[data-row-type="fin"]')) as HTMLTableRowElement[];
     allFinRows.forEach(finRow => {
@@ -1154,54 +1197,97 @@ function sortTable(tbody: HTMLElement, sortKey: string, direction: 'asc' | 'desc
         }
     });
     
-    const allRows = Array.from(tbody.querySelectorAll('tr[data-row-type="ufi"]')) as HTMLTableRowElement[];
+    // Group UFI rows by sheet
+    const rowsBySheet = new Map<string, HTMLTableRowElement[]>();
+    const allUfiRows = Array.from(tbody.querySelectorAll('tr[data-row-type="ufi"]')) as HTMLTableRowElement[];
     
-    allRows.sort((a, b) => {
-        let valueA: any;
-        let valueB: any;
-        
-        switch (sortKey) {
-            case 'count':
-                valueA = Number(a.getAttribute('data-count') || a.children[5].textContent || '0');
-                valueB = Number(b.getAttribute('data-count') || b.children[5].textContent || '0');
-                break;
-            case 'fscore':
-                valueA = Number(a.getAttribute('data-fscore') || a.children[6].textContent || '0');
-                valueB = Number(b.getAttribute('data-fscore') || b.children[6].textContent || '0');
-                break;
-            case 'complexity':
-                const complexityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
-                const complexityA = a.getAttribute('data-complexity') || a.children[7].textContent || '';
-                const complexityB = b.getAttribute('data-complexity') || b.children[7].textContent || '';
-                valueA = complexityOrder[complexityA as keyof typeof complexityOrder] || 0;
-                valueB = complexityOrder[complexityB as keyof typeof complexityOrder] || 0;
-                break;
-            case 'sheet':
-                valueA = (a.children[2].textContent || '').toLowerCase();
-                valueB = (b.children[2].textContent || '').toLowerCase();
-                break;
-            default:
-                return 0;
+    allUfiRows.forEach(ufiRow => {
+        const sheetName = ufiRow.getAttribute('data-worksheet') || '';
+        if (!rowsBySheet.has(sheetName)) {
+            rowsBySheet.set(sheetName, []);
         }
-        
-        if (typeof valueA === 'number' && typeof valueB === 'number') {
-            return direction === 'asc' ? valueA - valueB : valueB - valueA;
-        } else {
-            if (valueA < valueB) return direction === 'asc' ? -1 : 1;
-            if (valueA > valueB) return direction === 'asc' ? 1 : -1;
-            return 0;
-        }
+        rowsBySheet.get(sheetName)!.push(ufiRow);
     });
     
-    // Clear tbody and re-insert sorted rows with their FIN rows
+    // Sort UFI rows within each sheet
+    rowsBySheet.forEach((sheetUfiRows, sheetName) => {
+        sheetUfiRows.sort((a, b) => {
+            let valueA: any;
+            let valueB: any;
+            
+            switch (sortKey) {
+                case 'count':
+                    valueA = Number(a.getAttribute('data-count') || a.children[5].textContent || '0');
+                    valueB = Number(b.getAttribute('data-count') || b.children[5].textContent || '0');
+                    break;
+                case 'fscore':
+                    valueA = Number(a.getAttribute('data-fscore') || a.children[6].textContent || '0');
+                    valueB = Number(b.getAttribute('data-fscore') || b.children[6].textContent || '0');
+                    break;
+                case 'complexity':
+                    const complexityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+                    const complexityA = a.getAttribute('data-complexity') || a.children[7].textContent || '';
+                    const complexityB = b.getAttribute('data-complexity') || b.children[7].textContent || '';
+                    valueA = complexityOrder[complexityA as keyof typeof complexityOrder] || 0;
+                    valueB = complexityOrder[complexityB as keyof typeof complexityOrder] || 0;
+                    break;
+                case 'sheet':
+                    valueA = (a.children[2].textContent || '').toLowerCase();
+                    valueB = (b.children[2].textContent || '').toLowerCase();
+                    break;
+                default:
+                    return 0;
+            }
+            
+            if (typeof valueA === 'number' && typeof valueB === 'number') {
+                return direction === 'asc' ? valueA - valueB : valueB - valueA;
+            } else {
+                if (valueA < valueB) return direction === 'asc' ? -1 : 1;
+                if (valueA > valueB) return direction === 'asc' ? 1 : -1;
+                return 0;
+            }
+        });
+    });
+    
+    // Sort sheets alphabetically (unless sorting by sheet)
+    const sortedSheets = Array.from(rowsBySheet.keys()).sort();
+    if (sortKey === 'sheet') {
+        sortedSheets.sort((a, b) => {
+            return direction === 'asc' ? a.localeCompare(b) : b.localeCompare(a);
+        });
+    }
+    
+    // Clear tbody and re-insert sorted rows grouped by sheet with headers
     tbody.innerHTML = '';
-    allRows.forEach(ufiRow => {
-        tbody.appendChild(ufiRow);
-        const ufi = ufiRow.getAttribute('data-ufi');
-        if (ufi) {
-            const finRows = finRowsByUfi.get(ufi) || [];
-            finRows.forEach(finRow => tbody.appendChild(finRow));
+    sortedSheets.forEach((sheetName, sheetIndex) => {
+        // Add separator before each sheet group (except first)
+        if (sheetIndex > 0) {
+            const separatorRow = document.createElement('tr');
+            separatorRow.className = 'sheet-separator-row';
+            separatorRow.innerHTML = `<td colspan="13" class="sheet-separator-cell"></td>`;
+            tbody.appendChild(separatorRow);
         }
+        
+        // Add sheet header
+        const headerRow = document.createElement('tr');
+        headerRow.className = 'sheet-header-row';
+        const headerCell = document.createElement('td');
+        headerCell.colSpan = 13;
+        headerCell.className = 'sheet-header-cell';
+        headerCell.textContent = `Sheet: ${sheetName}`;
+        headerRow.appendChild(headerCell);
+        tbody.appendChild(headerRow);
+        
+        // Insert UFI rows for this sheet with their FIN rows
+        const sheetUfiRows = rowsBySheet.get(sheetName)!;
+        sheetUfiRows.forEach(ufiRow => {
+            tbody.appendChild(ufiRow);
+            const ufi = ufiRow.getAttribute('data-ufi');
+            if (ufi) {
+                const finRows = finRowsByUfi.get(ufi) || [];
+                finRows.forEach(finRow => tbody.appendChild(finRow));
+            }
+        });
     });
 }
 
@@ -2112,12 +2198,25 @@ async function exportUniqueFormulaListing(): Promise<void> {
                 ['UFI', 'FIN', 'Sheet', 'Formula', 'Formula (normalized)', 'Count', 'F-Score', 'Complexity', 'Priority', 'Status', 'Comment', 'Client Response']
             ];
 
-            sheet.getRange(`A${row}:L${row}`).values = TABLE_HEADER;
-            sheet.getRange(`A${row}:L${row}`).format.font.bold = true;
-            row++;
-
             const firstDataRow = row;
             const tbody = document.getElementById('uniqueFormulaTableBody');
+            
+            // Group rows by sheet name
+            const rowsBySheet = new Map<string, Array<{
+                ufi: string;
+                fin: string;
+                sheetName: string;
+                formula: string;
+                normalized: string;
+                count: string;
+                fScore: string;
+                complexity: string;
+                priority: string;
+                status: string;
+                comment: string;
+                clientResponse: string;
+                isFin: boolean;
+            }>>();
             
             if (tbody) {
                 // Export from DOM to capture FIN rows and edited data
@@ -2139,58 +2238,191 @@ async function exportUniqueFormulaListing(): Promise<void> {
                             ? cells[1].textContent || ''
                             : '';
                         const sheetName = rowType === 'ufi' ? cells[2].textContent || '' : '';
+                        
+                        // For FIN rows, get sheet name from parent UFI row
+                        let actualSheetName = sheetName;
+                        if (!actualSheetName && rowType === 'fin') {
+                            const parentUfiRow = tbody.querySelector(`tr[data-row-type="ufi"][data-ufi="${ufi}"]`);
+                            if (parentUfiRow) {
+                                const parentCells = parentUfiRow.querySelectorAll('td');
+                                if (parentCells.length >= 3) {
+                                    actualSheetName = parentCells[2].textContent || '';
+                                }
+                            }
+                        }
+                        
                         const formula = rowType === 'ufi' ? cells[3].textContent || '' : '';
                         const normalized = rowType === 'ufi' ? cells[4].textContent || '' : '';
                         const count = rowType === 'ufi' ? cells[5].textContent || '' : '';
                         const fScore = rowType === 'ufi' ? cells[6].textContent || '' : '';
                         const complexity = rowType === 'ufi' ? cells[7].textContent || '' : '';
-        // Extract priority from dropdown (both UFI and FIN rows can have priority)
-        const prioritySelect = cells[8].querySelector('select');
-        const priority = prioritySelect ? prioritySelect.value : cells[8].textContent || '';
-        // Extract status (both UFI and FIN rows can have status)
-        const status = cells[9].textContent || '';
+                        // Extract priority from dropdown (both UFI and FIN rows can have priority)
+                        const prioritySelect = cells[8].querySelector('select');
+                        const priority = prioritySelect ? prioritySelect.value : cells[8].textContent || '';
+                        // Extract status (both UFI and FIN rows can have status)
+                        const status = cells[9].textContent || '';
                         const comment = cells[10].textContent || '';
                         const clientResponse = cells[11].textContent || '';
                         
-                        sheet.getRange(`A${row}:L${row}`).values = [[
-                            ufi,
-                            fin,
-                            sheetName,
-                            formula,
-                            normalized,
-                            count,
-                            fScore,
-                            complexity,
-                            priority,
-                            status,
-                            comment,
-                            clientResponse
-                        ]];
-                        row++;
+                        if (actualSheetName) {
+                            if (!rowsBySheet.has(actualSheetName)) {
+                                rowsBySheet.set(actualSheetName, []);
+                            }
+                            rowsBySheet.get(actualSheetName)!.push({
+                                ufi,
+                                fin,
+                                sheetName: actualSheetName,
+                                formula,
+                                normalized,
+                                count,
+                                fScore,
+                                complexity,
+                                priority,
+                                status,
+                                comment,
+                                clientResponse,
+                                isFin: rowType === 'fin'
+                            });
+                        }
                     }
                 });
             } else {
                 // Fallback: export from analysis results (no FIN rows)
-            analysisResults.worksheets.forEach(ws => {
+                analysisResults.worksheets.forEach(ws => {
                     ws.uniqueFormulasList.forEach(info => {
+                        if (!rowsBySheet.has(ws.name)) {
+                            rowsBySheet.set(ws.name, []);
+                        }
+                        rowsBySheet.get(ws.name)!.push({
+                            ufi: info.ufIndicator,
+                            fin: '',
+                            sheetName: ws.name,
+                            formula: info.exampleFormula,
+                            normalized: info.normalizedFormula,
+                            count: String(info.count),
+                            fScore: String(info.fScore),
+                            complexity: info.complexity,
+                            priority: '',
+                            status: '',
+                            comment: '',
+                            clientResponse: '',
+                            isFin: false
+                        });
+                    });
+                });
+            }
+            
+            // Sort sheets alphabetically and export grouped by sheet
+            const sortedSheets = Array.from(rowsBySheet.keys()).sort();
+            
+            sortedSheets.forEach((sheetName, sheetIndex) => {
+                const sectionStartRow = row;
+                
+                // Add separator row before new sheet section (except first)
+                if (sheetIndex > 0) {
+                    // Add a blank row with top border for visual separation
+                    const separatorRange = sheet.getRange(`A${row}:L${row}`);
+                    separatorRange.format.borders.getItem('EdgeTop').style = 'Continuous';
+                    separatorRange.format.borders.getItem('EdgeTop').weight = 'Medium';
+                    separatorRange.format.borders.getItem('EdgeTop').color = '#8a8886';
+                    row++;
+                }
+                
+                // Add sheet header row with merged cells
+                const headerRange = sheet.getRange(`A${row}:L${row}`);
+                headerRange.merge();
+                headerRange.values = [[`Sheet: ${sheetName}`]];
+                headerRange.format.font.bold = true;
+                headerRange.format.font.size = 13;
+                headerRange.format.fill.color = '#0078d4';
+                headerRange.format.font.color = '#ffffff';
+                headerRange.format.horizontalAlignment = 'Left';
+                headerRange.format.verticalAlignment = 'Center';
+                headerRange.format.borders.getItem('EdgeTop').style = 'Continuous';
+                headerRange.format.borders.getItem('EdgeTop').weight = 'Thick';
+                headerRange.format.borders.getItem('EdgeTop').color = '#005a9e';
+                headerRange.format.borders.getItem('EdgeBottom').style = 'Continuous';
+                headerRange.format.borders.getItem('EdgeBottom').weight = 'Thick';
+                headerRange.format.borders.getItem('EdgeBottom').color = '#005a9e';
+                headerRange.format.borders.getItem('EdgeLeft').style = 'Continuous';
+                headerRange.format.borders.getItem('EdgeLeft').weight = 'Thick';
+                headerRange.format.borders.getItem('EdgeLeft').color = '#005a9e';
+                headerRange.format.borders.getItem('EdgeRight').style = 'Continuous';
+                headerRange.format.borders.getItem('EdgeRight').weight = 'Thick';
+                headerRange.format.borders.getItem('EdgeRight').color = '#005a9e';
+                row++;
+                
+                // Add header row for this section
+                const columnHeaderRange = sheet.getRange(`A${row}:L${row}`);
+                columnHeaderRange.values = TABLE_HEADER;
+                columnHeaderRange.format.font.bold = true;
+                columnHeaderRange.format.fill.color = '#f3f2f1';
+                columnHeaderRange.format.borders.getItem('EdgeBottom').style = 'Continuous';
+                columnHeaderRange.format.borders.getItem('EdgeBottom').weight = 'Medium';
+                columnHeaderRange.format.borders.getItem('EdgeBottom').color = '#8a8886';
+                row++;
+                
+                // Export rows for this sheet (group UFI with its FIN rows)
+                const sheetRows = rowsBySheet.get(sheetName)!;
+                const ufiRows = sheetRows.filter(r => !r.isFin);
+                const finRows = sheetRows.filter(r => r.isFin);
+                
+                // Group FIN rows by their UFI
+                const finRowsByUfi = new Map<string, typeof finRows>();
+                finRows.forEach(finRow => {
+                    if (!finRowsByUfi.has(finRow.ufi)) {
+                        finRowsByUfi.set(finRow.ufi, []);
+                    }
+                    finRowsByUfi.get(finRow.ufi)!.push(finRow);
+                });
+                
+                // Export UFI rows with their FIN rows
+                ufiRows.forEach(ufiRow => {
                     sheet.getRange(`A${row}:L${row}`).values = [[
-                        info.ufIndicator,
-                            '',
-                        ws.name,
-                        info.exampleFormula,
-                        info.normalizedFormula,
-                        info.count,
-                        info.fScore,
-                        info.complexity,
-                        '',
-                        '',
-                        '',
-                        ''
+                        ufiRow.ufi,
+                        ufiRow.fin,
+                        ufiRow.sheetName,
+                        ufiRow.formula,
+                        ufiRow.normalized,
+                        ufiRow.count,
+                        ufiRow.fScore,
+                        ufiRow.complexity,
+                        ufiRow.priority,
+                        ufiRow.status,
+                        ufiRow.comment,
+                        ufiRow.clientResponse
                     ]];
                     row++;
+                    
+                    // Add FIN rows for this UFI
+                    const relatedFins = finRowsByUfi.get(ufiRow.ufi) || [];
+                    relatedFins.forEach(finRow => {
+                        sheet.getRange(`A${row}:L${row}`).values = [[
+                            finRow.ufi,
+                            finRow.fin,
+                            finRow.sheetName,
+                            finRow.formula,
+                            finRow.normalized,
+                            finRow.count,
+                            finRow.fScore,
+                            finRow.complexity,
+                            finRow.priority,
+                            finRow.status,
+                            finRow.comment,
+                            finRow.clientResponse
+                        ]];
+                        row++;
+                    });
                 });
+                
+                // Add bottom border to the last row of this section for visual separation
+                if (row > sectionStartRow + 2) { // Only if we have data rows
+                    const lastRowRange = sheet.getRange(`A${row - 1}:L${row - 1}`);
+                    lastRowRange.format.borders.getItem('EdgeBottom').style = 'Continuous';
+                    lastRowRange.format.borders.getItem('EdgeBottom').weight = 'Medium';
+                    lastRowRange.format.borders.getItem('EdgeBottom').color = '#8a8886';
+                }
             });
-            }
 
             const lastDataRow = row - 1;
             if (lastDataRow >= firstDataRow) {

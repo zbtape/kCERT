@@ -865,6 +865,37 @@ button#refreshMapSheets {
     cursor: not-allowed;
 }
 
+/* Sheet header row styling - subtle and professional */
+.sheet-header-row {
+    background-color: #faf9f8;
+}
+
+.sheet-header-cell {
+    background-color: #faf9f8 !important;
+    color: #323130 !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    padding: 10px 8px !important;
+    border-top: 1px solid #edebe9 !important;
+    border-bottom: 1px solid #edebe9 !important;
+    border-left: none !important;
+    border-right: none !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sheet-separator-row {
+    height: 2px;
+}
+
+.sheet-separator-cell {
+    padding: 0 !important;
+    height: 2px;
+    background-color: #edebe9 !important;
+    border-top: 1px solid #edebe9 !important;
+    border-bottom: none !important;
+}
+
 .add-fin-button {
     background-color: #0078d4;
     color: white;
