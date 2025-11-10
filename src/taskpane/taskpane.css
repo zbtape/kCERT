@@ -714,6 +714,10 @@ button#refreshMapSheets {
     gap: 8px;
 }
 
+.toolbar-section[hidden] {
+    display: none !important;
+}
+
 .toolbar-section label {
     font-weight: 600;
 }

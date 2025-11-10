@@ -46,6 +46,9 @@ Office.onReady((info) => {
         });
         initializeScopePicker();
         
+        // Initialize the view state to ensure toolbars are shown/hidden correctly
+        switchAnalysisView('summaryView');
+        
         // Components are now initialized
         refreshMapSheetList();
         renderMapRunSummary([]);
@@ -2751,13 +2754,12 @@ async function navigateToCell(worksheetName: string, cellAddress: string): Promi
 }
 
 function switchAnalysisView(target: AnalysisViewId): void {
-    if (activeView === target) {
-        return;
-    }
+    // Always update the state, even if it's the same view (needed for initial load)
     activeView = target;
+    
+    // Update panels and tabs
     ANALYSIS_VIEWS.forEach(viewId => {
         const panel = document.getElementById(viewId);
-        const toolbar = document.querySelector(`[data-view="${viewId}"]`);
         const tab = document.querySelector(`[data-target="${viewId}"]`);
         if (!panel || !tab) {
             return;
@@ -2765,8 +2767,31 @@ function switchAnalysisView(target: AnalysisViewId): void {
         const isActive = viewId === target;
         panel.toggleAttribute('hidden', !isActive);
         (tab as HTMLElement).setAttribute('aria-selected', isActive ? 'true' : 'false');
-        if (toolbar instanceof HTMLElement) {
-            toolbar.hidden = !isActive;
+    });
+    
+    // Update toolbars - handle both single and multiple data-view values
+    const allToolbars = document.querySelectorAll('[data-view]');
+    allToolbars.forEach(toolbar => {
+        if (!(toolbar instanceof HTMLElement)) {
+            return;
+        }
+        const dataView = toolbar.getAttribute('data-view');
+        if (!dataView) {
+            return;
+        }
+        
+        // Check if this toolbar should be visible for the current view
+        // Support comma-separated list of views
+        const allowedViews = dataView.split(',').map(v => v.trim());
+        const shouldShow = allowedViews.includes(target);
+        
+        // Use both hidden attribute and display style for reliability
+        if (shouldShow) {
+            toolbar.removeAttribute('hidden');
+            toolbar.style.display = '';
+        } else {
+            toolbar.setAttribute('hidden', '');
+            toolbar.style.display = 'none';
         }
     });
 }
