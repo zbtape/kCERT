@@ -27,8 +27,8 @@ Office.onReady((info) => {
             }
         });
         document.getElementById('exportListing')?.addEventListener('click', exportUniqueFormulaListing);
-        document.getElementById('colourApply')?.addEventListener('click', () => applyColouring(false));
-        document.getElementById('colourReset')?.addEventListener('click', () => applyColouring(true));
+        document.getElementById('colorApply')?.addEventListener('click', () => applyColoring(false));
+        document.getElementById('colorReset')?.addEventListener('click', () => applyColoring(true));
         document.getElementById('gptSettings')?.addEventListener('click', openGptSettings);
         document.getElementById('saveGptSettings')?.addEventListener('click', saveGptSettings);
         document.getElementById('cancelGptSettings')?.addEventListener('click', closeGptSettings);
@@ -64,7 +64,7 @@ let mapSheetCache: string[] = [];
 let minutesPerFormulaSetting = 2;
 let uniqueListingState: { showReviewedOnly: boolean; searchTerm: string } = { showReviewedOnly: false, searchTerm: '' };
 
-const ANALYSIS_VIEWS = ['summaryView', 'listingView', 'mapsView', 'colourView'] as const;
+const ANALYSIS_VIEWS = ['summaryView', 'listingView', 'mapsView', 'colorView'] as const;
 type AnalysisViewId = typeof ANALYSIS_VIEWS[number];
 
 let activeView: AnalysisViewId = 'summaryView';
@@ -3154,9 +3154,9 @@ async function exportUniqueFormulaListing(): Promise<void> {
     }
 }
 
-async function applyColouring(resetOnly: boolean): Promise<void> {
-    const resetFills = (document.getElementById('colourResetFills') as HTMLInputElement)?.checked ?? false;
-    const resetFont = (document.getElementById('colourResetFont') as HTMLInputElement)?.checked ?? false;
+async function applyColoring(resetOnly: boolean): Promise<void> {
+    const resetFills = (document.getElementById('colorResetFills') as HTMLInputElement)?.checked ?? false;
+    const resetFont = (document.getElementById('colorResetFont') as HTMLInputElement)?.checked ?? false;
     const targetSheets = sheetScope.length ? [...sheetScope] : undefined;
 
     try {
@@ -3184,24 +3184,24 @@ async function applyColouring(resetOnly: boolean): Promise<void> {
                     continue;
                 }
                 if (resetOnly) {
-                    await resetColours(usedRange, resetFills, resetFont);
+                    await resetColors(usedRange, resetFills, resetFont);
                     continue;
                 }
                 if (resetFills || resetFont) {
-                    await resetColours(usedRange, resetFills, resetFont);
+                    await resetColors(usedRange, resetFills, resetFont);
                 }
-                await colourUniqueAndInputs(usedRange);
+                await colorUniqueAndInputs(usedRange);
             }
             await context.sync();
         });
-        showStatusMessage(resetOnly ? 'Model colours removed.' : 'Unique and input colouring applied.', 'success');
+        showStatusMessage(resetOnly ? 'Model colors removed.' : 'Unique and input coloring applied.', 'success');
     } catch (error) {
-        console.error('Colouring failed', error);
-        showStatusMessage(`Colouring failed: ${getErrorMessage(error)}`, 'error');
+        console.error('Coloring failed', error);
+        showStatusMessage(`Coloring failed: ${getErrorMessage(error)}`, 'error');
     }
 }
 
-async function resetColours(range: Excel.Range, resetFills: boolean, resetFont: boolean): Promise<void> {
+async function resetColors(range: Excel.Range, resetFills: boolean, resetFont: boolean): Promise<void> {
     if (resetFills) {
         range.format.fill.clear();
     }
@@ -3210,7 +3210,7 @@ async function resetColours(range: Excel.Range, resetFills: boolean, resetFont: 
     }
 }
 
-async function colourUniqueAndInputs(range: Excel.Range): Promise<void> {
+async function colorUniqueAndInputs(range: Excel.Range): Promise<void> {
     range.load(['formulas', 'values']);
     await range.context.sync();
     const formulas = range.formulas as (string | null)[][];

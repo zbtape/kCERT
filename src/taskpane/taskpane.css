@@ -1574,18 +1574,18 @@ button#refreshMapSheets {
     font-style: italic;
 }
 
-.colour-controls {
+.color-controls {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.colour-actions {
+.color-actions {
     display: flex;
     gap: 10px;
 }
 
-.colour-options {
+.color-options {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1602,7 +1602,7 @@ button#refreshMapSheets {
         text-align: center;
     }
 
-    .colour-actions {
+    .color-actions {
         flex-direction: column;
     }
 } 

@@ -32,10 +32,10 @@
                     <button class="analysis-tab" id="analysisTab_summary" data-target="summaryView" aria-selected="true" role="tab">Summary</button>
                     <button class="analysis-tab" id="analysisTab_listing" data-target="listingView" aria-selected="false" role="tab">Unique Formula Listing</button>
                     <button class="analysis-tab" id="analysisTab_maps" data-target="mapsView" aria-selected="false" role="tab">Maps</button>
-                    <button class="analysis-tab" id="analysisTab_colour" data-target="colourView" aria-selected="false" role="tab">Colour Unique / Inputs</button>
+                    <button class="analysis-tab" id="analysisTab_color" data-target="colorView" aria-selected="false" role="tab">Color Unique / Inputs</button>
                 </div>
                 <div class="analysis-toolbar" id="analysisToolbar">
-                    <div class="toolbar-section" id="scopeControl" data-view="summaryView,listingView,mapsView,colourView">
+                    <div class="toolbar-section" id="scopeControl" data-view="summaryView,listingView,mapsView,colorView">
                         <label for="analysisScope">Scope</label>
                         <select id="analysisScope">
                             <option value="workbook" selected>Entire workbook</option>
@@ -62,9 +62,9 @@
                         <button class="ms-Button toolbar-button" id="toggleMapLegend" type="button"><span class="ms-Button-label">Legend</span></button>
                         <button class="ms-Button toolbar-button" id="mapsExport" type="button"><span class="ms-Button-label">Export map index</span></button>
                     </div>
-                    <div class="toolbar-section" id="colourToolbar" data-view="colourView" hidden>
-                        <button class="ms-Button toolbar-button" id="applyColourUnique" type="button"><span class="ms-Button-label">Apply Colours</span></button>
-                        <button class="ms-Button toolbar-button" id="removeModelColours" type="button"><span class="ms-Button-label">Reset Colours</span></button>
+                    <div class="toolbar-section" id="colorToolbar" data-view="colorView" hidden>
+                        <button class="ms-Button toolbar-button" id="applyColorUnique" type="button"><span class="ms-Button-label">Apply Colors</span></button>
+                        <button class="ms-Button toolbar-button" id="removeModelColors" type="button"><span class="ms-Button-label">Reset Colors</span></button>
                     </div>
                 </div>
 
@@ -272,22 +272,22 @@
                     </div>
                 </div>
 
-                <div id="colourView" class="analysis-view" role="tabpanel" aria-labelledby="analysisTab_colour" hidden>
-                    <section class="colour-controls">
-                        <h3 class="section-title">Colour Unique Formulae and Inputs</h3>
-                        <p class="section-help">Apply purple for unique formulas and yellow for numeric inputs across the selected scope. Reset colours to strip model formatting before reapplying MRT colours.</p>
-                        <div class="colour-actions">
-                            <button class="ms-Button" id="colourApply" type="button"><span class="ms-Button-label">Colour Unique</span></button>
-                            <button class="ms-Button" id="colourReset" type="button"><span class="ms-Button-label">Remove Model Colours</span></button>
+                <div id="colorView" class="analysis-view" role="tabpanel" aria-labelledby="analysisTab_color" hidden>
+                    <section class="color-controls">
+                        <h3 class="section-title">Color Unique Formulae and Inputs</h3>
+                        <p class="section-help">Apply purple for unique formulas and yellow for numeric inputs across the selected scope. Reset colors to strip model formatting before reapplying MRT colors.</p>
+                        <div class="color-actions">
+                            <button class="ms-Button" id="colorApply" type="button"><span class="ms-Button-label">Color Unique</span></button>
+                            <button class="ms-Button" id="colorReset" type="button"><span class="ms-Button-label">Remove Model Colors</span></button>
                         </div>
-                        <div class="colour-options">
+                        <div class="color-options">
                             <label class="checkbox-container">
-                                <input type="checkbox" id="colourResetFills" checked>
+                                <input type="checkbox" id="colorResetFills" checked>
                                 <span>Reset fills to "No Fill"</span>
                             </label>
                             <label class="checkbox-container">
-                                <input type="checkbox" id="colourResetFont" checked>
-                                <span>Reset font colour to "Automatic"</span>
+                                <input type="checkbox" id="colorResetFont" checked>
+                                <span>Reset font color to "Automatic"</span>
                             </label>
                         </div>
                     </section>
