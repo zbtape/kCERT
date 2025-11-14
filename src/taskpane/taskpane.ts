@@ -1105,11 +1105,17 @@ function renderUniqueFormulaListing(results: AnalysisResult): void {
             const countCell = document.createElement('td');
             countCell.textContent = formatNumber(formulaInfo.count);
             
-            const fScoreCell = document.createElement('td');
-            fScoreCell.textContent = formatNumber(formulaInfo.fScore);
-            
-            const complexityCell = document.createElement('td');
-            complexityCell.textContent = formulaInfo.complexity;
+            // Combined Complexity / F-Score cell
+            const complexityFScoreCell = document.createElement('td');
+            complexityFScoreCell.className = 'complexity-fscore-cell';
+            const complexitySpan = document.createElement('div');
+            complexitySpan.className = `complexity-label complexity-${formulaInfo.complexity.toLowerCase()}`;
+            complexitySpan.textContent = formulaInfo.complexity;
+            const fScoreSpan = document.createElement('div');
+            fScoreSpan.className = 'fscore-label';
+            fScoreSpan.textContent = `F-Score: ${formatNumber(formulaInfo.fScore)}`;
+            complexityFScoreCell.appendChild(complexitySpan);
+            complexityFScoreCell.appendChild(fScoreSpan);
             
             // UFI rows have priority/status that are greyed out until FIN exists
             const priorityCell = document.createElement('td');
@@ -1173,8 +1179,7 @@ function renderUniqueFormulaListing(results: AnalysisResult): void {
             row.appendChild(formulaCell);
             row.appendChild(normalizedCell);
             row.appendChild(countCell);
-            row.appendChild(fScoreCell);
-            row.appendChild(complexityCell);
+            row.appendChild(complexityFScoreCell);
             row.appendChild(priorityCell);
             row.appendChild(statusCell);
             row.appendChild(commentCell);
@@ -1348,15 +1353,10 @@ function sortTable(tbody: HTMLElement, sortKey: string, direction: 'asc' | 'desc
                     valueB = Number(b.getAttribute('data-count') || b.children[5].textContent || '0');
                     break;
                 case 'fscore':
-                    valueA = Number(a.getAttribute('data-fscore') || a.children[6].textContent || '0');
-                    valueB = Number(b.getAttribute('data-fscore') || b.children[6].textContent || '0');
-                    break;
                 case 'complexity':
-                    const complexityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
-                    const complexityA = a.getAttribute('data-complexity') || a.children[7].textContent || '';
-                    const complexityB = b.getAttribute('data-complexity') || b.children[7].textContent || '';
-                    valueA = complexityOrder[complexityA as keyof typeof complexityOrder] || 0;
-                    valueB = complexityOrder[complexityB as keyof typeof complexityOrder] || 0;
+                    // Both sort by F-Score (complexity is derived from F-Score)
+                    valueA = Number(a.getAttribute('data-fscore') || '0');
+                    valueB = Number(b.getAttribute('data-fscore') || '0');
                     break;
                 case 'sheet':
                     valueA = (a.children[2].textContent || '').toLowerCase();
@@ -1631,11 +1631,8 @@ function createFinRow(ufi: string, finIndex: number, tbody: HTMLElement, parentR
     const countCell = document.createElement('td');
     countCell.textContent = ''; // Empty for nested rows
     
-    const fScoreCell = document.createElement('td');
-    fScoreCell.textContent = ''; // Empty for nested rows
-    
-    const complexityCell = document.createElement('td');
-    complexityCell.textContent = ''; // Empty for nested rows
+    const complexityFScoreCell = document.createElement('td');
+    complexityFScoreCell.textContent = ''; // Empty for nested rows
     
     // FIN rows have priority and status
     const priorityCell = document.createElement('td');
@@ -1694,8 +1691,7 @@ function createFinRow(ufi: string, finIndex: number, tbody: HTMLElement, parentR
     row.appendChild(formulaCell);
     row.appendChild(normalizedCell);
     row.appendChild(countCell);
-    row.appendChild(fScoreCell);
-    row.appendChild(complexityCell);
+    row.appendChild(complexityFScoreCell);
     row.appendChild(priorityCell);
     row.appendChild(statusCell);
     row.appendChild(commentCell);
@@ -2971,15 +2967,23 @@ async function exportUniqueFormulaListing(): Promise<void> {
                         const formula = rowType === 'ufi' ? cells[3].textContent || '' : '';
                         const normalized = rowType === 'ufi' ? cells[4].textContent || '' : '';
                         const count = rowType === 'ufi' ? cells[5].textContent || '' : '';
-                        const fScore = rowType === 'ufi' ? cells[6].textContent || '' : '';
-                        const complexity = rowType === 'ufi' ? cells[7].textContent || '' : '';
+                        // Combined Complexity / F-Score cell (index 6)
+                        const complexityFScoreCell = rowType === 'ufi' ? cells[6] : null;
+                        let complexity = '';
+                        let fScore = '';
+                        if (complexityFScoreCell) {
+                            const complexityLabel = complexityFScoreCell.querySelector('.complexity-label');
+                            const fScoreLabel = complexityFScoreCell.querySelector('.fscore-label');
+                            complexity = complexityLabel ? complexityLabel.textContent || '' : '';
+                            fScore = fScoreLabel ? fScoreLabel.textContent.replace('F-Score: ', '') || '' : '';
+                        }
                         // Extract priority from dropdown (both UFI and FIN rows can have priority)
-                        const prioritySelect = cells[8].querySelector('select');
-                        const priority = prioritySelect ? prioritySelect.value : cells[8].textContent || '';
+                        const prioritySelect = cells[7].querySelector('select');
+                        const priority = prioritySelect ? prioritySelect.value : cells[7].textContent || '';
                         // Extract status (both UFI and FIN rows can have status)
-                        const status = cells[9].textContent || '';
-                        const comment = cells[10].textContent || '';
-                        const clientResponse = cells[11].textContent || '';
+                        const status = cells[8].textContent || '';
+                        const comment = cells[9].textContent || '';
+                        const clientResponse = cells[10].textContent || '';
                         
                         if (actualSheetName) {
                             if (!rowsBySheet.has(actualSheetName)) {
@@ -3046,7 +3050,7 @@ async function exportUniqueFormulaListing(): Promise<void> {
                 }
                 
                 // Add sheet header row with merged cells
-                const headerRange = sheet.getRange(`A${row}:L${row}`);
+                const headerRange = sheet.getRange(`A${row}:K${row}`);
                 headerRange.merge();
                 headerRange.values = [[`Sheet: ${sheetName}`]];
                 headerRange.format.font.bold = true;
@@ -3070,7 +3074,7 @@ async function exportUniqueFormulaListing(): Promise<void> {
                 row++;
                 
                 // Add header row for this section
-                const columnHeaderRange = sheet.getRange(`A${row}:L${row}`);
+                const columnHeaderRange = sheet.getRange(`A${row}:K${row}`);
                 columnHeaderRange.values = TABLE_HEADER;
                 columnHeaderRange.format.font.bold = true;
                 columnHeaderRange.format.fill.color = '#f3f2f1';
@@ -3095,15 +3099,14 @@ async function exportUniqueFormulaListing(): Promise<void> {
                 
                 // Export UFI rows with their FIN rows
                 ufiRows.forEach(ufiRow => {
-                    sheet.getRange(`A${row}:L${row}`).values = [[
+                    sheet.getRange(`A${row}:K${row}`).values = [[
                         ufiRow.ufi,
                         ufiRow.fin,
                         ufiRow.sheetName,
                         ufiRow.formula,
                         ufiRow.normalized,
                         ufiRow.count,
-                        ufiRow.fScore,
-                        ufiRow.complexity,
+                        `${ufiRow.complexity} / ${ufiRow.fScore}`,
                         ufiRow.priority,
                         ufiRow.status,
                         ufiRow.comment,
@@ -3114,15 +3117,14 @@ async function exportUniqueFormulaListing(): Promise<void> {
                     // Add FIN rows for this UFI
                     const relatedFins = finRowsByUfi.get(ufiRow.ufi) || [];
                     relatedFins.forEach(finRow => {
-                        sheet.getRange(`A${row}:L${row}`).values = [[
+                        sheet.getRange(`A${row}:K${row}`).values = [[
                             finRow.ufi,
                             finRow.fin,
                             finRow.sheetName,
                             finRow.formula,
                             finRow.normalized,
                             finRow.count,
-                            finRow.fScore,
-                            finRow.complexity,
+                            `${finRow.complexity} / ${finRow.fScore}`,
                             finRow.priority,
                             finRow.status,
                             finRow.comment,
@@ -3134,7 +3136,7 @@ async function exportUniqueFormulaListing(): Promise<void> {
                 
                 // Add bottom border to the last row of this section for visual separation
                 if (row > sectionStartRow + 2) { // Only if we have data rows
-                    const lastRowRange = sheet.getRange(`A${row - 1}:L${row - 1}`);
+                    const lastRowRange = sheet.getRange(`A${row - 1}:K${row - 1}`);
                     lastRowRange.format.borders.getItem('EdgeBottom').style = 'Continuous';
                     lastRowRange.format.borders.getItem('EdgeBottom').weight = 'Medium';
                     lastRowRange.format.borders.getItem('EdgeBottom').color = '#8a8886';

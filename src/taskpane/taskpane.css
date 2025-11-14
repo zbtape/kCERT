@@ -915,25 +915,28 @@ button#refreshMapSheets {
 .help-icon-inline[data-tooltip]:hover::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 100%;
+    top: 100%;
     left: 50%;
     transform: translateX(-50%);
-    margin-bottom: 6px;
+    margin-top: 6px;
     padding: 8px 12px;
     background: #323130;
     color: #ffffff;
     font-size: 12px;
     font-weight: normal;
     white-space: normal;
-    width: 240px;
+    width: max-content;
+    min-width: 200px;
+    max-width: min(300px, calc(100vw - 40px));
     border-radius: 4px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
+    z-index: 10000;
     pointer-events: none;
     line-height: 1.4;
     text-align: left;
     text-transform: none;
     letter-spacing: normal;
+    word-wrap: break-word;
 }
 
 .help-icon-inline[data-tooltip]:hover::after {
@@ -947,12 +950,15 @@ button#refreshMapSheets {
     content: '';
     position: absolute;
     bottom: 100%;
+    top: auto;
     left: 50%;
     transform: translateX(-50%);
     margin-bottom: 0;
+    margin-top: 0;
     border: 6px solid transparent;
-    border-top-color: #323130;
-    z-index: 1001;
+    border-bottom-color: #323130;
+    border-top-color: transparent;
+    z-index: 10001;
     pointer-events: none;
 }
 
@@ -1058,6 +1064,17 @@ button#refreshMapSheets {
     text-align: center;
 }
 
+.complexity-fscore-cell {
+    text-align: center;
+    vertical-align: middle;
+    padding: 4px 8px;
+}
+
+.complexity-label {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
 .complexity-high {
     color: #d13438;
 }
@@ -1068,6 +1085,12 @@ button#refreshMapSheets {
 
 .complexity-low {
     color: #107c10;
+}
+
+.fscore-label {
+    font-size: 11px;
+    color: #605e5c;
+    margin-top: 2px;
 }
 
 

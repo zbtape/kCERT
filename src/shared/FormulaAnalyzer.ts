@@ -8,6 +8,7 @@
 import { getCellAddress, isEmpty, isFormula, normalizeFormula, twoDecimals } from './FormulaUtils';
 import { detectHardCodedLiterals, HardCodedLiteral } from './HardCodeDetector';
 import { computeFormulaComplexity, ComplexityBand, FormulaComplexityResult } from './FormulaComplexity';
+import { getComplexityBandFromFScore } from './ScoringConfig';
 
 export interface AnalysisOptions {
     includeEmptyCells: boolean;
@@ -263,6 +264,7 @@ export class FormulaAnalyzer {
                             let info = formulaMap.get(key);
                             if (!info) {
                                 const detail = computeFormulaComplexity(formula, isArrayFormula);
+                                const initialFScore = this.computeFScore(detail, 0, isArrayFormula);
                                 info = {
                                     formula,
                                     normalizedFormula: normalized,
@@ -270,8 +272,8 @@ export class FormulaAnalyzer {
                                     count: 0,
                                     cells: [],
                                     ufIndicator: '',
-                                    fScore: this.computeFScore(detail, 0, isArrayFormula),
-                                    complexity: detail.band,
+                                    fScore: initialFScore,
+                                    complexity: getComplexityBandFromFScore(initialFScore),
                                     complexityDetail: detail,
                                     isArrayFormula
                                 };
@@ -284,8 +286,8 @@ export class FormulaAnalyzer {
                             }
                             info.exampleFormula = formula;
                             info.complexityDetail = computeFormulaComplexity(formula, isArrayFormula);
-                            info.complexity = info.complexityDetail.band;
                             info.fScore = this.computeFScore(info.complexityDetail, info.count, isArrayFormula);
+                            info.complexity = getComplexityBandFromFScore(info.fScore);
 
                             if (options.groupSimilarFormulas) {
                                 let aggregate = normalizedMap.get(normalized);
@@ -658,6 +660,7 @@ export class FormulaAnalyzer {
 
     private toFormulaInfo(aggregate: AggregatedFormula): FormulaInfo {
         const detail = aggregate.complexityDetail;
+        const fScore = this.computeFScore(detail, aggregate.totalCount, aggregate.isArrayFormula);
         return {
             formula: aggregate.exampleFormula,
             normalizedFormula: aggregate.normalizedFormula,
@@ -665,23 +668,24 @@ export class FormulaAnalyzer {
             count: aggregate.totalCount,
             cells: aggregate.cells,
             ufIndicator: '',
-            fScore: this.computeFScore(detail, aggregate.totalCount, aggregate.isArrayFormula),
-            complexity: detail.band,
+            fScore: fScore,
+            complexity: getComplexityBandFromFScore(fScore),
             complexityDetail: detail,
             isArrayFormula: aggregate.isArrayFormula
         };
     }
 
     private computeFScore(detail: FormulaComplexityResult, usageCount: number, isArrayFormula: boolean): number {
+        // Start with base score (already includes arrayAdj)
         let score = detail.score;
-        if (isArrayFormula) {
-            score += 6;
-        }
+        
+        // Add usage adjustment (array bonus already included in base score)
         if (usageCount > 100) {
             score += 4;
         } else if (usageCount > 20) {
             score += 2;
         }
-        return Math.min(99, score);
+        
+        return Math.min(99, Math.max(0, score));
     }
 }

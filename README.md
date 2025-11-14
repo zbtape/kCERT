@@ -11,7 +11,7 @@ kCERT (KPMG Comprehensive Excel Review Tool) addresses the critical need for sta
 ### Phase 1 - Formula Analysis
 - **Workbook Analysis**: Analyze all worksheets in a workbook for formula content
 - **Unique Formula Detection**: Identify and count unique formulas across worksheets
-- **Formula Complexity Assessment**: Automatically assess formula complexity levels
+- **Formula Complexity Assessment**: Automatically assess formula complexity levels using a heuristic scoring system (F-Score) that weights functions by type, structural depth, operators, and usage frequency
 - **Professional Reporting**: Generate formatted analysis reports within Excel
 - **Audit Trail Generation**: Create downloadable audit trails for compliance
 
@@ -118,6 +118,24 @@ MRT-Tool/
 - **Capped Sampling**: Unique formulas retain at most 200 sample addresses per formula, and hard-coded detection stores the first 400 findings per sheet.
 - **Hard-Coded Detection**: Inline literal scanning (numbers, strings, arrays) runs during streaming without secondary passes.
 - **Analysis Metadata**: Worksheet results include `analysisMode` and optional `fallbackReason` so downstream consumers know which path executed.
+
+### Formula Scoring System (F-Score)
+
+The tool uses a heuristic scoring system to assess formula complexity:
+
+- **Function-Weighted Scoring**: Functions are weighted by complexity (e.g., SUM=1, INDEX=3, OFFSET=4). Unknown functions default to weight 1.
+- **Structural Adjustments**: 
+  - Depth adjustment based on nesting level (parentheses depth)
+  - Operator density adjustment
+  - Array formula bonus (+5)
+- **Usage Adjustment**: Widely-used formulas receive additional points (+2 for 21-100 uses, +4 for 100+ uses)
+- **F-Score Range**: 0-99, capped at 99
+- **Complexity Bands**: Derived from F-Score thresholds:
+  - Low: 0-29
+  - Medium: 30-59
+  - High: 60-99
+
+The complexity band is determined solely from the F-Score, ensuring consistency between the numeric score and categorical classification.
 
 ## Development
 
