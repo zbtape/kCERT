@@ -11,11 +11,14 @@
   
   <DisplayName DefaultValue="kCERT"/>
   <Description DefaultValue="Professional Excel add-in for formula analysis and model review with audit trail capabilities"/>
-  <undefined DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
-  <undefined DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
+  <IconUrl DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
+  <HighResolutionIconUrl DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
   <SupportUrl DefaultValue="https://yourcompany.com/support"/>
   
   <AppDomains>
+    <AppDomain>http://localhost:8080</AppDomain>
+    <AppDomain>http://localhost:3001</AppDomain>
+    <AppDomain>https://digitalmatrix-cat.kpmgcloudops.com</AppDomain>
     <AppDomain>https://ideal-adventure-qmmv8we.pages.github.io</AppDomain>
   </AppDomains>
   
@@ -24,7 +27,7 @@
   </Hosts>
   
   <DefaultSettings>
-    <undefined DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/taskpane.html"/>
+    <SourceLocation DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/taskpane.html"/>
   </DefaultSettings>
   
   <Permissions>ReadWriteDocument</Permissions>
@@ -76,14 +79,14 @@
     
     <Resources>
       <bt:Images>
-        <undefined DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
-        <undefined DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
-        <undefined DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/assets/KPMG_blue_logo.svg.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://yourcompany.com/cert"/>
-        <undefined DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/commands.html"/>
-        <undefined DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/taskpane.html"/>
+        <bt:Url id="Commands.Url" DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/commands.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://ideal-adventure-qmmv8we.pages.github.io/dist/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="kCERT"/>
