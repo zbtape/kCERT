@@ -1,0 +1,1 @@
+(()=>{var n={};n.g=function(){if("object"==typeof globalThis)return globalThis;try{return this||new Function("return this")()}catch(n){if("object"==typeof window)return window}}(),Office.onReady(function(){}),n.g.showTaskPane=function(n){n.completed()}})();
