@@ -7,10 +7,7 @@ Office.onReady((info) => {
     if (info.host === Office.HostType.Excel) {
         document.getElementById('analyzeFormulas')?.addEventListener('click', analyzeFormulas);
         document.getElementById('generateMaps')?.addEventListener('click', generateMaps);
-        document.getElementById('refreshMapSheets')?.addEventListener('click', refreshMapSheetList);
-        document.getElementById('selectAllMapSheets')?.addEventListener('click', () => toggleAllMapSheets(true));
-        document.getElementById('clearAllMapSheets')?.addEventListener('click', () => toggleAllMapSheets(false));
-        document.getElementById('exportResults')?.addEventListener('click', exportResults);
+        // Old map controls removed: refreshMapSheets, selectAllMapSheets, clearAllMapSheets
         document.getElementById('generateAuditTrail')?.addEventListener('click', generateAuditTrail);
         document.getElementById('analysisScope')?.addEventListener('change', handleScopeChange);
         document.getElementById('minutesPerFormula')?.addEventListener('change', handleMinutesPerFormulaChange);
@@ -27,8 +24,10 @@ Office.onReady((info) => {
             }
         });
         document.getElementById('exportListing')?.addEventListener('click', exportUniqueFormulaListing);
-        document.getElementById('colorApply')?.addEventListener('click', () => applyColoring(false));
-        document.getElementById('colorReset')?.addEventListener('click', () => applyColoring(true));
+        document.getElementById('btnCreateColorCopies')?.addEventListener('click', createColorCopies);
+        document.getElementById('createColorCopies')?.addEventListener('click', createColorCopies);
+        document.getElementById('btnRemoveColorCopies')?.addEventListener('click', removeColorCopies);
+        document.getElementById('removeColorCopies')?.addEventListener('click', removeColorCopies);
         document.getElementById('gptSettings')?.addEventListener('click', openGptSettings);
         document.getElementById('saveGptSettings')?.addEventListener('click', saveGptSettings);
         document.getElementById('cancelGptSettings')?.addEventListener('click', closeGptSettings);
@@ -50,7 +49,6 @@ Office.onReady((info) => {
         switchAnalysisView('summaryView');
         
         // Components are now initialized
-        refreshMapSheetList();
         renderMapRunSummary([]);
         
         // Load GPT settings and update button states
@@ -60,7 +58,7 @@ Office.onReady((info) => {
 
 let analysisResults: AnalysisResult | null = null;
 let mapGenerator: WorksheetMapGenerator | null = null;
-let mapSheetCache: string[] = [];
+// removed mapSheetCache as it is no longer used
 let minutesPerFormulaSetting = 2;
 let uniqueListingState: { showReviewedOnly: boolean; searchTerm: string } = { showReviewedOnly: false, searchTerm: '' };
 
@@ -562,45 +560,13 @@ function showLoadingIndicator(isLoading: boolean): void {
     }
 }
 
-function getSelectedMapSheets(): string[] {
-    const listContainer = document.getElementById('mapSheetChecklist');
-    if (!listContainer) {
-        return [];
-    }
-
-    const selected: string[] = [];
-    listContainer.querySelectorAll('input[type="checkbox"]').forEach(box => {
-        const input = box as HTMLInputElement;
-        if (input.checked) {
-            selected.push(input.value);
-        }
-    });
-    return selected;
-}
-
-function toggleAllMapSheets(shouldSelect: boolean): void {
-    const listContainer = document.getElementById('mapSheetChecklist');
-    if (!listContainer) {
-        return;
-    }
-
-    listContainer.querySelectorAll('input[type="checkbox"]').forEach(box => {
-        (box as HTMLInputElement).checked = shouldSelect;
-    });
-}
-
 async function generateMaps(): Promise<void> {
     try {
         showLoadingIndicator(true);
         showStatusMessage('Generating worksheet maps...', 'info');
         renderMapRunSummary([]);
 
-        const selectedSheets = getSelectedMapSheets();
-        if (selectedSheets.length === 0) {
-            showStatusMessage('Please select at least one worksheet to map.', 'warning');
-            renderMapRunSummary([]);
-            return;
-        }
+        const targetSheets = sheetScope.length ? [...sheetScope] : undefined;
 
         await Excel.run(async (context) => {
             const workbook = context.workbook;
@@ -609,7 +575,15 @@ async function generateMaps(): Promise<void> {
             await context.sync();
 
             const skipSheets = new Set(['kCERT_Analysis_Report']);
-            const targets = worksheets.items.filter(ws => selectedSheets.includes(ws.name) && !skipSheets.has(ws.name));
+            const targets = worksheets.items.filter(ws => {
+                if (ws.name.endsWith('_maps') || ws.name.endsWith('_Color') || skipSheets.has(ws.name)) {
+                    return false;
+                }
+                if (targetSheets) {
+                    return targetSheets.includes(ws.name);
+                }
+                return true;
+            });
 
             if (targets.length === 0) {
                 showStatusMessage('No worksheets selected for mapping.', 'warning');
@@ -640,8 +614,6 @@ async function generateMaps(): Promise<void> {
             showStatusMessage('Worksheet maps generated successfully.', 'success');
             renderMapRunSummary(summary);
         });
-
-        await refreshMapSheetList();
     } catch (error) {
         console.error('Error generating maps', error);
         showStatusMessage(`Error generating maps: ${getErrorMessage(error)}`, 'error');
@@ -814,61 +786,8 @@ function escapeHtml(value: string): string {
 }
 
 async function refreshMapSheetList(): Promise<void> {
-    const container = document.getElementById('mapSheetChecklist');
-    if (!container) {
-        return;
-    }
-    container.innerHTML = '<div class="map-sheet-placeholder">Loading worksheets...</div>';
-
-    try {
-        await Excel.run(async (context) => {
-            const worksheets = context.workbook.worksheets;
-            worksheets.load('items/name');
-            await context.sync();
-
-            mapSheetCache = worksheets.items
-                .map(ws => ws.name)
-                .filter(name => name !== 'kCERT_Analysis_Report' && !name.endsWith('_maps'));
-
-            renderMapSheetChecklist(mapSheetCache);
-        });
-    } catch (error) {
-        console.error('Failed to refresh worksheet list', error);
-        container.innerHTML = '<div class="map-sheet-placeholder">Unable to load worksheets</div>';
-    }
-}
-
-function renderMapSheetChecklist(sheets: string[]): void {
-    const container = document.getElementById('mapSheetChecklist');
-    if (!container) {
-        return;
-    }
-
-    if (sheets.length === 0) {
-        container.innerHTML = '<div class="map-sheet-placeholder">No worksheets available</div>';
-        return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    sheets.forEach(sheetName => {
-        const label = document.createElement('label');
-        label.className = 'map-sheet-item';
-
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.value = sheetName;
-        input.checked = true;
-
-        const span = document.createElement('span');
-        span.textContent = sheetName;
-
-        label.appendChild(input);
-        label.appendChild(span);
-        fragment.appendChild(label);
-    });
-
-    container.innerHTML = '';
-    container.appendChild(fragment);
+    // Function removed as part of UI standardization
+    return Promise.resolve();
 }
 
 function renderMapRunSummary(summary: string[]): void {
@@ -3156,9 +3075,7 @@ async function exportUniqueFormulaListing(): Promise<void> {
     }
 }
 
-async function applyColoring(resetOnly: boolean): Promise<void> {
-    const resetFills = (document.getElementById('colorResetFills') as HTMLInputElement)?.checked ?? false;
-    const resetFont = (document.getElementById('colorResetFont') as HTMLInputElement)?.checked ?? false;
+async function createColorCopies(): Promise<void> {
     const targetSheets = sheetScope.length ? [...sheetScope] : undefined;
 
     try {
@@ -3169,7 +3086,8 @@ async function applyColoring(resetOnly: boolean): Promise<void> {
             await context.sync();
 
             const targets = sheets.items.filter(ws => {
-                if (ws.name === 'kCERT_Analysis_Report' || ws.name.endsWith('_maps')) {
+                // Skip special sheets and already colored copies
+                if (ws.name === 'kCERT_Analysis_Report' || ws.name.endsWith('_maps') || ws.name.endsWith('_Color')) {
                     return false;
                 }
                 if (targetSheets) {
@@ -3178,56 +3096,89 @@ async function applyColoring(resetOnly: boolean): Promise<void> {
                 return true;
             });
 
+            if (targets.length === 0) {
+                // If no targets found, maybe alert user?
+                return;
+            }
+
             for (const sheet of targets) {
-                const usedRange = sheet.getUsedRangeOrNullObject();
-                usedRange.load(['isNullObject', 'address']);
+                const newName = `${sheet.name}_Color`;
+                
+                // Delete existing if any
+                const existing = sheets.getItemOrNullObject(newName);
+                existing.load('isNullObject');
                 await context.sync();
-                if (usedRange.isNullObject) {
-                    continue;
+                
+                if (!existing.isNullObject) {
+                    existing.delete();
+                    await context.sync();
                 }
-                if (resetOnly) {
-                    await resetColors(usedRange, resetFills, resetFont);
-                    continue;
-                }
-                if (resetFills || resetFont) {
-                    await resetColors(usedRange, resetFills, resetFont);
-                }
+
+                // Copy sheet
+                const copy = sheet.copy(Excel.WorksheetPositionType.after, sheet);
+                copy.name = newName;
+                
+                // Apply coloring to the data
+                const usedRange = copy.getUsedRange();
                 await colorUniqueAndInputs(usedRange);
+                
+                copy.activate();
             }
             await context.sync();
         });
-        showStatusMessage(resetOnly ? 'Model colors removed.' : 'Unique and input coloring applied.', 'success');
+        showStatusMessage('Color copies created (1:1). Legend in taskpane.', 'success');
     } catch (error) {
-        console.error('Coloring failed', error);
-        showStatusMessage(`Coloring failed: ${getErrorMessage(error)}`, 'error');
+        console.error('Color copy creation failed', error);
+        showStatusMessage(`Failed to create color copies: ${getErrorMessage(error)}`, 'error');
     }
 }
 
-async function resetColors(range: Excel.Range, resetFills: boolean, resetFont: boolean): Promise<void> {
-    if (resetFills) {
-        range.format.fill.clear();
-    }
-    if (resetFont) {
-        range.format.font.color = 'Automatic';
+async function removeColorCopies(): Promise<void> {
+    try {
+        await Excel.run(async (context) => {
+            const sheets = context.workbook.worksheets;
+            sheets.load('items/name');
+            await context.sync();
+            
+            const colorSheets = sheets.items.filter(ws => ws.name.endsWith('_Color'));
+            for (const sheet of colorSheets) {
+                sheet.delete();
+            }
+            await context.sync();
+        });
+        showStatusMessage('All color copy tabs deleted.', 'success');
+    } catch (error) {
+        console.error('Failed to remove color copies', error);
+        showStatusMessage(`Failed to remove copies: ${getErrorMessage(error)}`, 'error');
     }
 }
 
 async function colorUniqueAndInputs(range: Excel.Range): Promise<void> {
-    range.load(['formulas', 'values']);
+    range.load(['formulas', 'values', 'rowIndex']);
     await range.context.sync();
     const formulas = range.formulas as (string | null)[][];
     const values = range.values as any[][];
+
+    // We can just iterate everything.
+    // We color everything that matches criteria.
 
     for (let r = 0; r < formulas.length; r++) {
         for (let c = 0; c < formulas[r].length; c++) {
             const formula = formulas[r][c];
             const value = values[r][c];
+            
+            // Optimization: Don't color if empty
+            if (value === null || value === "" || value === undefined) continue;
+
             const cell = range.getCell(r, c);
             if (typeof formula === 'string' && formula.startsWith('=')) {
                 cell.format.fill.color = '#7030A0';
+                cell.format.font.color = 'white'; // Good contrast
             } else if (typeof value === 'number') {
                 cell.format.fill.color = '#FFC000';
+                cell.format.font.color = 'black';
             }
         }
     }
+    // Note: We are not syncing inside loop, which is good.
 }

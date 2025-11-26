@@ -24,6 +24,9 @@
                     <p>KPMG Comprehensive Excel Review Tool</p>
                 </div>
             </div>
+            <button id="settingsButton" class="header-icon-button" aria-label="Settings">
+                <span class="ms-Icon ms-Icon--Settings">⚙️</span>
+            </button>
         </header>
         
         <main class="ms-welcome__main">
@@ -32,7 +35,7 @@
                     <button class="analysis-tab" id="analysisTab_summary" data-target="summaryView" aria-selected="true" role="tab">Summary</button>
                     <button class="analysis-tab" id="analysisTab_listing" data-target="listingView" aria-selected="false" role="tab">Unique Formula Listing</button>
                     <button class="analysis-tab" id="analysisTab_maps" data-target="mapsView" aria-selected="false" role="tab">Maps</button>
-                    <button class="analysis-tab" id="analysisTab_color" data-target="colorView" aria-selected="false" role="tab">Color Unique / Inputs</button>
+                    <button class="analysis-tab" id="analysisTab_color" data-target="colorView" aria-selected="false" role="tab">Highlights</button>
                 </div>
                 <div class="analysis-toolbar" id="analysisToolbar">
                     <div class="toolbar-section" id="scopeControl" data-view="summaryView,listingView,mapsView,colorView">
@@ -50,21 +53,19 @@
                         <input type="number" id="minutesPerFormula" min="0.1" step="0.1" value="2">
                         <span class="toolbar-note">Adjust estimate based on reviewer skill & model complexity.</span>
                     </div>
-                    <div class="toolbar-section" id="gptSettingsToolbar" data-view="summaryView,listingView" hidden>
-                        <button class="ms-Button toolbar-button" id="gptSettings" type="button"><span class="ms-Button-label">GPT Settings</span></button>
-                    </div>
+                    <!-- GPT Settings Toolbar removed -->
                     <div class="toolbar-section" id="listingToolbar" data-view="listingView" hidden>
                         <label class="toolbar-checkbox"><input type="checkbox" id="listingReviewedFilter"> Reviewed only</label>
                         <input type="search" id="listingSearch" placeholder="Search formulas or UFIs">
                         <button class="ms-Button toolbar-button" id="exportListing" type="button"><span class="ms-Button-label">Export UFL to sheet</span></button>
                     </div>
                     <div class="toolbar-section" id="mapsToolbar" data-view="mapsView" hidden>
-                        <button class="ms-Button toolbar-button" id="toggleMapLegend" type="button"><span class="ms-Button-label">Legend</span></button>
-                        <button class="ms-Button toolbar-button" id="mapsExport" type="button"><span class="ms-Button-label">Export map index</span></button>
+                        <button class="ms-Button toolbar-button" id="generateMaps" type="button"><span class="ms-Button-label">Generate Maps</span></button>
+                        <button class="ms-Button toolbar-button" id="removeMaps" type="button"><span class="ms-Button-label">Delete Maps</span></button>
                     </div>
                     <div class="toolbar-section" id="colorToolbar" data-view="colorView" hidden>
-                        <button class="ms-Button toolbar-button" id="applyColorUnique" type="button"><span class="ms-Button-label">Apply Colors</span></button>
-                        <button class="ms-Button toolbar-button" id="removeModelColors" type="button"><span class="ms-Button-label">Reset Colors</span></button>
+                        <button class="ms-Button toolbar-button" id="createColorCopies" type="button"><span class="ms-Button-label">Create Color Copies</span></button>
+                        <button class="ms-Button toolbar-button" id="removeColorCopies" type="button"><span class="ms-Button-label">Delete Color Copies</span></button>
                     </div>
                 </div>
 
@@ -230,64 +231,85 @@
                 </div>
 
                 <div id="mapsView" class="analysis-view" role="tabpanel" aria-labelledby="analysisTab_maps" hidden>
-                    <!-- existing map controls moved here -->
-                    <div class="map-controls">
-                        <div class="map-actions">
-                            <button id="generateMaps" class="ms-Button">
-                                <span class="ms-Button-label">Generate Worksheet Maps</span>
-                            </button>
-                            <button id="refreshMapSheets" class="ms-Button map-refresh-button" type="button">
-                                <span class="ms-Button-label">Refresh List</span>
-                            </button>
-                        </div>
-                        <div class="map-selection">
-                            <label class="map-selection-label">Select worksheets to include</label>
-                            <div class="map-selection-actions">
-                                <button id="selectAllMapSheets" class="ms-Button map-mini-button" type="button">
-                                    <span class="ms-Button-label">Select All</span>
-                                </button>
-                                <button id="clearAllMapSheets" class="ms-Button map-mini-button" type="button">
-                                    <span class="ms-Button-label">Deselect All</span>
-                                </button>
-                            </div>
-                            <div id="mapSheetChecklist" class="map-sheet-list">
-                                <div class="map-sheet-placeholder">Loading worksheets...</div>
-                            </div>
-                        </div>
-                        <div id="mapRunSummary" class="map-run-summary" style="display: none;"></div>
-                        <div class="map-legend" id="mapLegendPanel">
-                            <h5>Worksheet Map Legend</h5>
-                            <ul>
-                                <li><span class="map-symbol map-symbol-f">F</span> Unique formula</li>
-                                <li><span class="map-symbol map-symbol-left">&lt;</span> Copy from the left</li>
-                                <li><span class="map-symbol map-symbol-up">^</span> Copy from above</li>
-                                <li><span class="map-symbol map-symbol-both">+</span> Copy from both left and above</li>
-                                <li><span class="map-symbol map-symbol-label">L</span> Label / descriptive text</li>
-                                <li><span class="map-symbol map-symbol-input">N</span> Numeric input</li>
-                                <li><span class="map-symbol map-symbol-array">A</span> Array formula spill</li>
-                            </ul>
-                            <p class="map-legend-note">Maps highlight copy direction breaks and blank cells within copy runs in the task pane summary after generation.</p>
-                        </div>
+                    <section class="section-help-container">
+                         <p class="section-help"><strong>Structure View:</strong> Generates new sheets with symbols to visualize formula consistency and structure (e.g. copied down/across). Original values are hidden to focus on structural patterns.</p>
+                    </section>
+                    
+                    <div class="map-legend" id="mapLegendPanel">
+                        <h5>Map Key</h5>
+                        <ul>
+                            <li><span class="map-symbol map-symbol-f">F</span> Unique formula</li>
+                            <li><span class="map-symbol map-symbol-left">&lt;</span> Copy from the left</li>
+                            <li><span class="map-symbol map-symbol-up">^</span> Copy from above</li>
+                            <li><span class="map-symbol map-symbol-both">+</span> Copy from both left and above</li>
+                            <li><span class="map-symbol map-symbol-label">L</span> Label / descriptive text</li>
+                            <li><span class="map-symbol map-symbol-input">N</span> Numeric input</li>
+                            <li><span class="map-symbol map-symbol-array">A</span> Array formula spill</li>
+                        </ul>
+                        <p class="map-legend-note">Maps highlight copy direction breaks and blank cells within copy runs in the task pane summary after generation.</p>
+                    </div>
+                    <div id="mapRunSummary" class="map-run-summary" style="display: none;"></div>
+                    <div class="map-actions-footer" style="margin-top: 12px;">
+                        <button class="ms-Button" id="btnRemoveMaps" type="button"><span class="ms-Button-label">Delete Maps</span></button>
                     </div>
                 </div>
 
                 <div id="colorView" class="analysis-view" role="tabpanel" aria-labelledby="analysisTab_color" hidden>
                     <section class="color-controls">
-                        <h3 class="section-title">Color Unique Formulae and Inputs</h3>
-                        <p class="section-help">Apply purple for unique formulas and yellow for numeric inputs across the selected scope. Reset colors to strip model formatting before reapplying MRT colors.</p>
-                        <div class="color-actions">
-                            <button class="ms-Button" id="colorApply" type="button"><span class="ms-Button-label">Color Unique</span></button>
-                            <button class="ms-Button" id="colorReset" type="button"><span class="ms-Button-label">Remove Model Colors</span></button>
+                        <h3 class="section-title">Highlight Inputs & Formulas</h3>
+                        <p class="section-help"><strong>Content View:</strong> Creates copies of selected sheets with color highlighting. Use this to distinguish hard-coded inputs from calculated formulas while keeping original values visible.</p>
+                        
+                        <div class="map-legend" style="margin: 10px 0; border: 1px solid #e1dfdd; border-radius: 4px; padding: 10px;">
+                            <h5 style="margin-top: 0;">Color Key</h5>
+                            <ul>
+                                <li><span class="map-symbol map-symbol-input" style="width: 100px; text-align: center;">Input</span> User entered numbers</li>
+                                <li><span class="map-symbol map-symbol-f" style="width: 100px; text-align: center;">Unique Formula</span> Calculated fields</li>
+                            </ul>
                         </div>
-                        <div class="color-options">
-                            <label class="checkbox-container">
-                                <input type="checkbox" id="colorResetFills" checked>
-                                <span>Reset fills to "No Fill"</span>
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" id="colorResetFont" checked>
-                                <span>Reset font color to "Automatic"</span>
-                            </label>
+
+                        <div class="color-actions">
+                            <button class="ms-Button" id="btnCreateColorCopies" type="button"><span class="ms-Button-label">Create Color Copies</span></button>
+                            <button class="ms-Button" id="btnRemoveColorCopies" type="button"><span class="ms-Button-label">Delete Color Copies</span></button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Dedicated Settings View -->
+                <div id="settingsView" class="analysis-view" role="tabpanel" aria-label="Settings" hidden>
+                    <section class="settings-header">
+                        <button id="closeSettings" class="back-button">
+                            <span>← Back</span>
+                        </button>
+                        <h3 class="section-title">Settings</h3>
+                    </section>
+
+                    <section class="settings-section">
+                        <h4 class="settings-subtitle">GPT Configuration</h4>
+                        <p class="section-help">Configure your API access for AI-powered analysis features.</p>
+                        
+                        <div class="form-field">
+                            <label for="bearerToken">Bearer Token</label>
+                            <input type="password" id="bearerToken" placeholder="Enter bearer token" />
+                        </div>
+                        <div class="form-field">
+                            <label for="engagementCode">Engagement Code</label>
+                            <input type="text" id="engagementCode" placeholder="Enter engagement code" />
+                        </div>
+                        
+                        <div class="settings-actions">
+                            <button class="ms-Button ms-Button--primary" id="saveGptSettings">
+                                <span class="ms-Button-label">Save & Validate</span>
+                            </button>
+                            <div id="gptSettingsStatus" class="settings-status"></div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section">
+                        <h4 class="settings-subtitle">Analysis Defaults</h4>
+                         <div class="analysis-options-settings">
+                            <!-- Moved options here if we want them in settings, but kept in summary for now. -->
+                            <!-- Placeholder for future settings -->
+                            <p class="settings-note">Additional configuration options will appear here.</p>
                         </div>
                     </section>
                 </div>
@@ -301,31 +323,8 @@
                 </div>
             </div>
 
-            <!-- GPT Settings Modal -->
-            <div id="gptSettingsModal" class="modal-overlay" style="display: none;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>GPT Settings</h3>
-                        <button class="modal-close" id="closeGptSettings">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-field">
-                            <label for="bearerToken">Bearer Token</label>
-                            <input type="password" id="bearerToken" placeholder="Enter bearer token" />
-                        </div>
-                        <div class="form-field">
-                            <label for="engagementCode">Engagement Code</label>
-                            <input type="text" id="engagementCode" placeholder="Enter engagement code" />
-                        </div>
-                        <div id="gptSettingsStatus" class="settings-status"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="ms-Button ms-Button--primary" id="saveGptSettings">Save & Validate</button>
-                        <button class="ms-Button" id="cancelGptSettings">Cancel</button>
-                    </div>
-                </div>
-            </div>
-
+            <!-- GPT Settings Modal (Removed) -->
+            
             <!-- GPT Response Modal -->
             <div id="gptResponseModal" class="modal-overlay" style="display: none;">
                 <div class="modal-content modal-large">
